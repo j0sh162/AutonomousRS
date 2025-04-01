@@ -7,10 +7,16 @@ class Robot:
     l = 0.16 # distance between wheels in metres
     
     position = (0,0) # X, Y
+    angle = 0 
 
-    def forward_kinematics(self, x, y,Vl, Vr, angle):
+    def __init__(self, position, angle):
+        self.position = position
+        self.angle = angle
         
-        R = (0.5*self.l)*((Vl+Vr)/(Vr-Vl))
+
+    def forward_kinematics(self, x, y, angle, Vl, Vr):
+        
+        R = (0.5*self.l)*((Vl+Vr)/(Vr-Vl)) 
         w = (Vr-Vl)/(self.l)
 
         icc = [x - R*math.sin(angle), y +R*math.cos(angle)]
@@ -21,28 +27,24 @@ class Robot:
                              [math.sin(w*delta_t),  math.cos(w*delta_t), 0],
                              [0                  ,  0                  , 1]])
         
-        print(icc)
-        second_part = np.array([x-icc[0]],[y-icc[1]],[angle])
+        second_part = np.array([[x-icc[0]],[y-icc[1]],[angle]])
 
         third_part = np.array([[icc[0]],[icc[1]],[w*delta_t]])
-        print(rotation*second_part + third_part)
 
-        return rotation*second_part + third_part
+        return np.dot(rotation,second_part) + third_part
+    
+    def update(self):
+        # update location based on logic
 
-
-
+        pose = self.forward_kinematics(0,0,1,0,1)    
         
+        # return pose 
+        return pose
 
 
 def main():
-    print("test")
     r = Robot()
-    r.forward_kinematics(0,0,1,0,1)
-
+    r.update()
+    
 if __name__ == '__main__':
     main()
-
-
-
-
-
