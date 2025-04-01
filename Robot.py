@@ -4,7 +4,7 @@ import numpy as np
 
 class Robot:
 
-    l = 16 # distance between wheels in metres
+    l = 8 # distance between wheels in metres
     
     position = (0,0) # X, Y
 
@@ -50,7 +50,7 @@ class Robot:
         
         # logic stuff 
         pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,1,2)
-        print(pose)
+        # print(pose)
         self.angle = float(pose[2])
         self.position = (float(pose[0]), float(pose[1]))
     

@@ -2,7 +2,7 @@ from Robot import Robot
 PI = 3.14
 
 
-CELL = 64
+CELL = 1
 MAZE = maze = [
     [1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 1, 2, 0, 1],
@@ -15,8 +15,8 @@ MAZE = maze = [
 ]
 
 class State():
-    def __init__(self):
-        self.map = MAZE
+    def __init__(self,map):
+        self.map = map
         self.robot = Robot((96,96),PI/4)  
         pass
     

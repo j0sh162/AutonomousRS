@@ -1,30 +1,56 @@
 import pygame 
 import random
 import numpy as np
+import struct
 from State import State 
 
 # Constants
-WIDTH, HEIGHT = 64, 64
-ROWS, COLS = 8, 8
-scale = 10
-CELL_SIZE = (WIDTH // COLS)*scale
+WIDTH, HEIGHT = 1, 1
+ROWS, COLS = 300, 300
+scale = 1
+CELL_SIZE = 1
 
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
-maze = [
-    [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 1, 2, 0, 1],
-    [1, 0, 1, 0, 1, 1, 0, 1],
-    [1, 0, 1, 0, 0, 0, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 1],
-    [1, 0, 1, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1]
-]
+# maze = [
+#     [1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 0, 0, 0, 1, 2, 0, 1],
+#     [1, 0, 1, 0, 1, 1, 0, 1],
+#     [1, 0, 1, 0, 0, 0, 0, 1],
+#     [1, 0, 1, 0, 1, 0, 0, 1],
+#     [1, 0, 1, 0, 1, 0, 0, 1],
+#     [1, 0, 1, 0, 0, 0, 0, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1]
+# ]
 
+from PIL import Image
 
+def read_bmp_with_pillow(file_path):
+    # Open the image file using Pillow
+    with Image.open(file_path) as img:
+        # Ensure image is in RGB mode
+        img = img.convert("RGB")
+        width, height = img.size
+        pixels = []
+
+        # Load pixel data
+        for y in range(height):
+            row = []
+            for x in range(width):
+                pixel = img.getpixel((x, y))
+                val = 0
+                if pixel[0] == 255:
+                    val = 0
+                else:
+                    val = 1
+
+                row.append(val)
+            pixels.append(row)
+    return pixels
+
+# Goal at 206 140
 def draw_grid(screen, grid):
     for y in range(ROWS):
         for x in range(COLS):
@@ -39,10 +65,11 @@ def draw_robot(screen, robot):
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((WIDTH*scale, HEIGHT*scale))
+    screen = pygame.display.set_mode((ROWS, COLS))
     pygame.display.set_caption("Maze Generator")
     clock = pygame.time.Clock()
-    state = State()
+    state = State(read_bmp_with_pillow('map.bmp'))
+    print(np.shape(state.map))
     #test
 
     running = True
@@ -63,4 +90,5 @@ def main():
     
 if __name__ == "__main__":
     main()
+    # print(read_bmp_with_pillow('map.bmp'))
 
