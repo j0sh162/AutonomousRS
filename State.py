@@ -1,5 +1,5 @@
 from Robot import Robot
-
+PI = 3.14
 
 
 CELL = 64
@@ -17,7 +17,7 @@ MAZE = maze = [
 class State():
     def __init__(self):
         self.map = MAZE
-        self.robot = Robot((96,96),0)  
+        self.robot = Robot((96,96),PI/4)  
         pass
     
     #TODO make efficient
@@ -34,15 +34,7 @@ class State():
     
     def update(self):
         self.robot.update()
-        # print(state.robot.position)
-        # print(self.collision(self.robot.position[0],self.robot.position[1]))
         pass
-
-
-
-
-
-
 
 if __name__ == "__main__":
     state = State()

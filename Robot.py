@@ -14,9 +14,12 @@ class Robot:
         self.radius = self.l/2
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
-        
-        if Vr - Vl == 0:
-            R = 1
+        delta_t = 0.1
+        if abs(Vr - Vl) <= 1e-6:
+            new_x = x + Vl * math.cos(angle) * delta_t
+            new_y = y + Vl * math.sin(angle) * delta_t
+            new_angle = angle  # No rotation
+            return np.array([[new_x], [new_y], [new_angle]])
         else:
             R = (0.5*self.l)*((Vl+Vr)/(Vr-Vl)) 
 
@@ -24,7 +27,7 @@ class Robot:
 
         icc = [x - R*math.sin(angle), y +R*math.cos(angle)]
 
-        delta_t = 1
+       
 
         rotation = np.array([[math.cos(w*delta_t), -math.sin(w*delta_t), 0],
                              [math.sin(w*delta_t),  math.cos(w*delta_t), 0],
@@ -46,7 +49,7 @@ class Robot:
     def update(self):
         
         # logic stuff 
-        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,10,1)
+        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,1,2)
         print(pose)
         self.angle = float(pose[2])
         self.position = (float(pose[0]), float(pose[1]))
@@ -56,7 +59,7 @@ class Robot:
 
 
 def main():
-    r = Robot((0,0), 1)
+    r = Robot((0,0), 0)
     # r.forward_kinematics(0,0,1,0,1)
     for i in range(0,50):
         print(r.update())
