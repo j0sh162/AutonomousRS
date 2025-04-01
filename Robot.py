@@ -11,6 +11,7 @@ class Robot:
     def __init__(self, position, angle):
         self.position = position
         self.angle = angle
+        self.radius = self.l/2
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
         

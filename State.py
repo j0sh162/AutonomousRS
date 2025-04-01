@@ -1,7 +1,7 @@
 from Robot import Robot
 
 
-WIDTH, HEIGHT = (640*2,640*2)
+
 CELL = 64
 MAZE = maze = [
     [1, 1, 1, 1, 1, 1, 1, 1],
@@ -17,11 +17,7 @@ MAZE = maze = [
 class State():
     def __init__(self):
         self.map = MAZE
-        self.robot = Robot((96,96),0)
-
-        # BOUNDS
-        self.WIDTH = WIDTH
-        self.HEIGHT = HEIGHT    
+        self.robot = Robot((96,96),0)  
         pass
     
     #TODO make efficient
@@ -38,8 +34,8 @@ class State():
     
     def update(self):
         self.robot.update()
-        print(state.robot.position)
-        print(self.collision(self.robot.position[0],self.robot.position[1]))
+        # print(state.robot.position)
+        # print(self.collision(self.robot.position[0],self.robot.position[1]))
         pass
 
 
@@ -54,6 +50,3 @@ if __name__ == "__main__":
     while (i <= 100):
         state.update()
         i += 1
-
-    
-    print('Heloo')
