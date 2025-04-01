@@ -36,7 +36,7 @@ class Robot:
     def update(self):
         # update location based on logic
 
-        pose = self.forward_kinematics(0,0,1,0,1)    
+        pose = self.forward_kinematics(self.position[0],self.position,1,0,1)    
         
         # return pose 
         return pose
