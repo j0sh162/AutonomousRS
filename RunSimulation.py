@@ -1,5 +1,6 @@
 import pygame
 import random
+import numpy as np
 
 # Constants
 WIDTH, HEIGHT = 600, 600
@@ -42,7 +43,8 @@ def main():
     
     grid = create_grid()
     carve_maze(grid, 0, 0, set())
-    
+    print(grid)
+    print(np.shape(grid))
     running = True
     while running:
         screen.fill(WHITE)
@@ -53,6 +55,7 @@ def main():
                 running = False
         
         pygame.display.flip()
+
         clock.tick(30)
     
     pygame.quit()
