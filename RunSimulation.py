@@ -43,7 +43,7 @@ def main():
     pygame.display.set_caption("Maze Generator")
     clock = pygame.time.Clock()
     state = State()
-
+    
     running = True
     while running:
         screen.fill(WHITE)
