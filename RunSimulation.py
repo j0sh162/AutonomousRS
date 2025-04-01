@@ -33,7 +33,7 @@ def draw_grid(screen, grid):
             # pygame.draw.line(screen,color,(x,y),(x+1,y+1),C)
 
 def draw_robot(screen, robot):
-    pygame.draw.circle(screen,RED,robot.position,(robot.radius)*100)
+    pygame.draw.circle(screen,RED,robot.position,(robot.radius))
 
     # pygame.draw.circle(screen,RED,(96,96),4)
 

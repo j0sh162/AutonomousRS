@@ -4,7 +4,7 @@ import numpy as np
 
 class Robot:
 
-    l = 0.16 # distance between wheels in metres
+    l = 16 # distance between wheels in metres
     
     position = (0,0) # X, Y
 
@@ -14,7 +14,7 @@ class Robot:
         self.radius = self.l/2
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
-        delta_t = 0.1
+        delta_t = 1
         if abs(Vr - Vl) <= 1e-6:
             new_x = x + Vl * math.cos(angle) * delta_t
             new_y = y + Vl * math.sin(angle) * delta_t
