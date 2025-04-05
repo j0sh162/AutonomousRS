@@ -14,12 +14,12 @@ class Robot:
         self.radius = self.l/2
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
-        delta_t = 1
+        delta_t = 0.01
         if abs(Vr - Vl) <= 1e-6:
             new_x = x + Vl * math.cos(angle) * delta_t
             new_y = y + Vl * math.sin(angle) * delta_t
             new_angle = angle  # No rotation
-            return np.array([[new_x], [new_y], [new_angle]])
+            return np.array([new_x, new_y, new_angle])
         else:
             R = (0.5*self.l)*((Vl+Vr)/(Vr-Vl)) 
 
@@ -34,12 +34,12 @@ class Robot:
                              [0                  ,  0                  , 1]])
         
         # print(icc)
-        second_part = np.array([[x-icc[0]],[y-icc[1]],[angle]])
+        second_part = np.array([x-icc[0],y-icc[1],angle])
 
         # print(rotation.shape)
         # print(second_part.shape)
 
-        third_part = np.array([[icc[0]],[icc[1]],[w*delta_t]])
+        third_part = np.array([icc[0],icc[1],w*delta_t])
         # print(np.dot(rotation,second_part) + third_part)
 
        
@@ -74,21 +74,21 @@ class Robot:
 
             
         if(min_distance == float('inf')):
-            pass
+            self.position = [self.position[0]+v[0],self.position[1]+v[1]]
         else:
             left_x = colliding_x - 0.5
             right_x = colliding_x + 0.5
             top_y = colliding_y - 0.5
             bottom_y = colliding_y + 0.5
             
-            left_dist = distance(x,y,left_x,colliding_y)
-            right_dist = distance(x,y,right_x,colliding_y)
-            top_dist = distance(x,y,colliding_x,top_y)
-            bot_dist = distance(x,y,colliding_x,bottom_y)
+            left_dist = self.distance(x,y,left_x,colliding_y)
+            right_dist = self.distance(x,y,right_x,colliding_y)
+            top_dist = self.distance(x,y,colliding_x,top_y)
+            bot_dist = self.distance(x,y,colliding_x,bottom_y)
 
             min_dist = min([left_dist,right_dist,top_dist,bot_dist])
 
-            n
+            n = None
             if(min_dist == left_dist):
                 n = [-1,0]
                 
@@ -100,23 +100,31 @@ class Robot:
                 
             else:
                 n = [0,1]
-                
-            v_perp = np.dot(np.dot(v,n),n)
+            
+            n = np.array(n)
+            v_perp = (np.dot(np.array(v).T,n)*n)
             v_par = v - v_perp
+         
+            self.position = [self.position[0]+v_par[0],self.position[1]+v_par[1]]
       
 
-    def distance(x1,y1,x2,y2):
-        dx = x1 - x2;
-        dy = y1 - y2;
+    def distance(self,x1,y1,x2,y2):
+        dx = x1 - x2
+        dy = y1 - y2
         return math.sqrt(dx * dx + dy * dy)
 
     def update(self,map):
         
         # logic stuff 
-        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,1,2)
+        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,-1,5)
         # print(pose)
         self.angle = float(pose[2])
-        self.position = (float(pose[0]), float(pose[1]))
+        v = [pose[0]-self.position[0],pose[1]- self.position[1]]
+        self.collision_check(map,v)
+
+        print(self.position)
+
+        # self.position = (float(pose[0]), float(pose[1]))
     
         
         return pose
