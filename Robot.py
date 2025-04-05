@@ -4,7 +4,7 @@ import numpy as np
 
 class Robot:
 
-    l = 8 # distance between wheels in metres
+    l = 12 # distance between wheels in metres
     
     position = (0,0) # X, Y
     angle = 0
@@ -64,17 +64,20 @@ class Robot:
                 if(map[j][i] == 1):
                     dx = x - i
                     dy = y - j
-                    distance = math.sqrt(dx * dx + dy * dy)
-                    colliding = distance < self.radius
-                    if(colliding):
-                        if(distance <= min_distance):
-                            min_distance = distance
-                            colliding_x = i
-                            colliding_y = j
-                            mov_dist = self.radius - min_distance + 1/2
-                            vec = np.array([dx,dy])
-                            normalized_v = vec / np.sqrt(np.sum(vec**2))
-                            move_vec = normalized_v*mov_dist
+                    for m in [[0,0.5],[0,-0.5],[0.5,0],[-0.5,0]]:
+                        dm_x = dx + m[0]
+                        dm_y = dy + m[1]
+                        distance = math.sqrt(dm_x * dm_x + dm_y * dm_y)
+                        colliding = distance < self.radius
+                        if(colliding):
+                            if(distance <= min_distance):
+                                min_distance = distance
+                                colliding_x = i
+                                colliding_y = j
+                                mov_dist = self.radius - min_distance + 1/2
+                                vec = np.array([dx,dy])
+                                normalized_v = vec / np.sqrt(np.sum(vec**2))
+                                move_vec = normalized_v*mov_dist
 
 
         self.angle = float(angle)
@@ -112,9 +115,6 @@ class Robot:
             v_perp = (np.dot(np.array(v).T,n)*n)
             v_par = v - v_perp
             self.position = [self.position[0]+move_vec[0],self.position[1]+move_vec[1]]
-           
-
-
             self.position = [self.position[0]+v_par[0],self.position[1]+v_par[1]]
       
 
@@ -126,7 +126,7 @@ class Robot:
     def update(self,map):
         
         # logic stuff 
-        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,-1,5)
+        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,3,3)
         # print(pose)
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
         self.collision_check(map,v,pose[2])

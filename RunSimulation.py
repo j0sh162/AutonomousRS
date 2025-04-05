@@ -85,7 +85,7 @@ def main():
         
         pygame.display.flip()
         state.update()
-        clock.tick(30)
+        clock.tick(60)
     
     pygame.quit()
     
