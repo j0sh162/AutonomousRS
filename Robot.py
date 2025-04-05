@@ -122,7 +122,7 @@ class Robot:
         self.angle = float(pose[2])
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
         self.collision_check(map,v)
-        self.sensors[0].update((float(self.position[0]),float(self.position[1])))
+        self.sensors[0].update((float(self.position[0]),float(self.position[1])), map)
         # print(self.position)
         print(pose[2])
         # self.position = (float(pose[0]), float(pose[1]))
@@ -145,7 +145,7 @@ class Sensor:
         self.starting_point = starting_point
     
         
-    def get_endpoint(self, start_point, angle_radians, length):
+    def get_endpoint (self, start_point, angle_radians, length):
         """
         Draws a line in 2D space with:
         - start_point: (x0, y0)
@@ -162,13 +162,29 @@ class Sensor:
         # Endpoint = start + length * direction
         end_x = x0 + length * dx
         end_y = y0 + length * dy
-        # num_points = self.get_num_points_between((x0,y0),(end_x,end_y), 1)
-        # x_values = np.linspace(x0, end_x, num_points)
-        # y_values = np.linspace(y0, end_y, num_points)
 
         return [float(end_x), float(end_y)]
     
-    def get_num_points_between(point1, point2, step_size=0.1):
+       
+    def get_points_on_line(self, start_point, angle_radians, length):
+
+        x0, y0 = start_point
+        
+        # Direction vector (unit length)
+        dx = np.cos(angle_radians)
+        dy = np.sin(angle_radians)
+        
+        # Endpoint = start + length * direction
+        end_x = x0 + length * dx
+        end_y = y0 + length * dy
+
+        num_points = self.get_num_points_between((x0,y0),(end_x,end_y), 1)
+        x_values = np.linspace(x0, end_x, num_points)
+        y_values = np.linspace(y0, end_y, num_points)
+
+        return [x_values, y_values]
+
+    def get_num_points_between(self, point1, point2, step_size=0.1):
         """
         Computes the number of points between two points given a step size.
         
@@ -191,17 +207,27 @@ class Sensor:
         
         return num_points
     
-    def update(self, starting_point):
-        self.starting_point = starting_point
-        self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
+    def get_overlap_distance(self, map):
+        print("test")
+        points = self.get_points_on_line(self.starting_point,self.robot.angle+self.direction, self.length)
+        # map is a 2d array with ones and zeros
+        #array looks like this [[x1,x2...],[y1,y2...]]
+        for i in range(len(points[0])):
+            x = int(points[0][i])
+            y = int(points[1][i])
+            if int(map[y][x]) == 1:
+                return (x, y)
+            
+        return None
 
     
-
-
+    def update(self, starting_point, map):
+        self.starting_point = starting_point
+        self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
+        print(self.get_overlap_distance(map))
 
 def main():
     r = Robot((0,0), 0)
-    
 
 if __name__ == '__main__':
     main()
