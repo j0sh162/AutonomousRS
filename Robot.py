@@ -47,7 +47,7 @@ class Robot:
 
         return np.dot(rotation,second_part) + third_part
     
-    def collision_check(self,map,v):
+    def collision_check(self,map,v,angle):
         x,y = self.position
         x_lower = math.floor(x - self.radius)
         y_lower = math.floor(y - self.radius)
@@ -71,12 +71,18 @@ class Robot:
                             min_distance = distance
                             colliding_x = i
                             colliding_y = j
+                            mov_dist = self.radius - min_distance + 1/2
+                            vec = np.array([dx,dy])
+                            normalized_v = vec / np.sqrt(np.sum(vec**2))
+                            move_vec = normalized_v*mov_dist
 
 
-            
+        self.angle = float(angle)
+
         if(min_distance == float('inf')):
             self.position = [self.position[0]+v[0],self.position[1]+v[1]]
         else:
+
             left_x = colliding_x - 0.5
             right_x = colliding_x + 0.5
             top_y = colliding_y - 0.5
@@ -105,7 +111,10 @@ class Robot:
             n = np.array(n)
             v_perp = (np.dot(np.array(v).T,n)*n)
             v_par = v - v_perp
-         
+            self.position = [self.position[0]+move_vec[0],self.position[1]+move_vec[1]]
+           
+
+
             self.position = [self.position[0]+v_par[0],self.position[1]+v_par[1]]
       
 
@@ -119,9 +128,8 @@ class Robot:
         # logic stuff 
         pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,-1,5)
         # print(pose)
-        self.angle = float(pose[2])
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
-        self.collision_check(map,v)
+        self.collision_check(map,v,pose[2])
         self.sensors[0].update((float(self.position[0]),float(self.position[1])), map)
         # print(self.position)
         print(pose[2])

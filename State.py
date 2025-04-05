@@ -17,7 +17,7 @@ MAZE = maze = [
 class State():
     def __init__(self,map):
         self.map = map
-        self.robot = Robot((96,96),PI/2)  
+        self.robot = Robot((15,20),PI/4)  
 
     
     #TODO make efficient
