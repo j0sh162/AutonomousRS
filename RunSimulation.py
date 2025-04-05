@@ -61,6 +61,7 @@ def draw_grid(screen, grid):
 def draw_robot(screen, robot):
     pygame.draw.circle(screen,RED,robot.position,(robot.radius))
     pygame.draw.line(screen,BLACK,robot.sensors[0].starting_point,robot.sensors[0].ending_point,1)
+    print(robot.sensors[0].starting_point,robot.sensors[0].ending_point)
     # pygame.draw.circle(screen,RED,(96,96),4)
 
 def main():

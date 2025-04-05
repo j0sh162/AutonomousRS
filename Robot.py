@@ -120,11 +120,11 @@ class Robot:
         pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,-1,5)
         # print(pose)
         self.angle = float(pose[2])
-        v = [pose[0]-self.position[0],pose[1]- self.position[1]]
+        v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
         self.collision_check(map,v)
-
-        print(self.position)
-
+        self.sensors[0].update((float(self.position[0]),float(self.position[1])))
+        # print(self.position)
+        print(pose[2])
         # self.position = (float(pose[0]), float(pose[1]))
     
         
@@ -162,9 +162,9 @@ class Sensor:
         # Endpoint = start + length * direction
         end_x = x0 + length * dx
         end_y = y0 + length * dy
-        num_points = self.get_num_points_between((x0,y0),(end_x,end_y), 1)
-        x_values = np.linspace(x0, end_x, num_points)
-        y_values = np.linspace(y0, end_y, num_points)
+        # num_points = self.get_num_points_between((x0,y0),(end_x,end_y), 1)
+        # x_values = np.linspace(x0, end_x, num_points)
+        # y_values = np.linspace(y0, end_y, num_points)
 
         return [float(end_x), float(end_y)]
     
