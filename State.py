@@ -18,11 +18,11 @@ class State():
     def __init__(self,map):
         self.map = map
         self.robot = Robot((96,96),PI/4)  
-        pass
+
     
     #TODO make efficient
 
-        return False
+
     
     def update(self):
         self.robot.update(self.map)

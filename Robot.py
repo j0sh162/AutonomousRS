@@ -103,7 +103,7 @@ class Robot:
                 
             v_perp = np.dot(np.dot(v,n),n)
             v_par = v - v_perp
-            return None
+      
 
     def distance(x1,y1,x2,y2):
         dx = x1 - x2;
