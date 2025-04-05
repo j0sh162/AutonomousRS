@@ -7,11 +7,14 @@ class Robot:
     l = 8 # distance between wheels in metres
     
     position = (0,0) # X, Y
+    angle = 0
+    sensors = []
 
     def __init__(self, position, angle):
         self.position = position
         self.angle = angle
         self.radius = self.l/2
+        self.sensors = [Sensor(list(position),0,30,self)]
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
         delta_t = 1
@@ -26,8 +29,6 @@ class Robot:
         w = (Vr-Vl)/(self.l)
 
         icc = [x - R*math.sin(angle), y +R*math.cos(angle)]
-
-       
 
         rotation = np.array([[math.cos(w*delta_t), -math.sin(w*delta_t), 0],
                              [math.sin(w*delta_t),  math.cos(w*delta_t), 0],
@@ -61,8 +62,8 @@ class Robot:
             j = y_lower
             for j in range(y_upper):
                 if(map[j][i] == 1):
-                    dx = x - i;
-                    dy = y - j;
+                    dx = x - i
+                    dy = y - j
                     distance = math.sqrt(dx * dx + dy * dy)
                     colliding = distance < self.radius
                     if(colliding):
@@ -106,8 +107,8 @@ class Robot:
       
 
     def distance(x1,y1,x2,y2):
-        dx = x1 - x2;
-        dy = y1 - y2;
+        dx = x1 - x2
+        dy = y1 - y2
         return math.sqrt(dx * dx + dy * dy)
 
     def update(self,map):
@@ -117,21 +118,82 @@ class Robot:
         # print(pose)
         self.angle = float(pose[2])
         self.position = (float(pose[0]), float(pose[1]))
+        self.sensors[0].update(list(self.position))
+
+        return pose
+
+class Sensor:
+
+    direction = 0
+    length = 0
+    robot = None
+    starting_point = [0,0]
+    ending_point = [0,0]
+
+    def __init__(self, starting_point, direction, length, robot):
+        self.length = length
+        self.direction = direction
+        self.robot = robot
+        self.starting_point = starting_point
     
         
-        return pose
+    def get_endpoint(self, start_point, angle_radians, length):
+        """
+        Draws a line in 2D space with:
+        - start_point: (x0, y0)
+        - angle_radians: direction in radians (0 = right, π/2 = up)
+        - length: distance to extend the line
+        - num_points: number of points for smoothness
+        """
+        x0, y0 = start_point
+        
+        # Direction vector (unit length)
+        dx = np.cos(angle_radians)
+        dy = np.sin(angle_radians)
+        
+        # Endpoint = start + length * direction
+        end_x = x0 + length * dx
+        end_y = y0 + length * dy
+        num_points = self.get_num_points_between((x0,y0),(end_x,end_y), 1)
+        x_values = np.linspace(x0, end_x, num_points)
+        y_values = np.linspace(y0, end_y, num_points)
+
+        return [float(end_x), float(end_y)]
+    
+    def get_num_points_between(point1, point2, step_size=0.1):
+        """
+        Computes the number of points between two points given a step size.
+        
+        Args:
+            point1 (tuple): (x1, y1)
+            point2 (tuple): (x2, y2)
+            step_size (float): Distance between consecutive points.
+        
+        Returns:
+            int: Number of points.
+        """
+        x1, y1 = point1
+        x2, y2 = point2
+        
+        # Calculate Euclidean distance
+        distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+        
+        # Compute number of points
+        num_points = int(distance / step_size) + 1
+        
+        return num_points
+    
+    def update(self, starting_point):
+        self.starting_point = starting_point
+        self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
+
+    
+
 
 
 def main():
     r = Robot((0,0), 0)
-    # r.forward_kinematics(0,0,1,0,1)
-    for i in range(0,50):
-        print(r.update())
+    
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
