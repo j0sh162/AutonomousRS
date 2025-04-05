@@ -21,19 +21,11 @@ class State():
         pass
     
     #TODO make efficient
-    def collision(self,x,y):
-        for i in range(len(maze)):
-            for j in range(len(maze[0])):
-                if(maze[i][j] == 1):
-                    x_bound = i * CELL
-                    y_bound = j * CELL
-                    if(x_bound <= x and x <= x_bound + CELL and y_bound <= y and y <= y_bound + CELL):
-                        return True
 
         return False
     
     def update(self):
-        self.robot.update()
+        self.robot.update(self.map)
         pass
 
 if __name__ == "__main__":
