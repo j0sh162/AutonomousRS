@@ -1,10 +1,10 @@
 import math
 import numpy as np
 
-
+CELL_SIZE = 1
 class Robot:
 
-    l = 12 # distance between wheels in metres
+    l = 24 # distance between wheels in metres
     
     position = (0,0) # X, Y
     angle = 0
@@ -17,7 +17,7 @@ class Robot:
         self.sensors = [Sensor(list(position),0,30,self)]
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
-        delta_t = 0.01
+        delta_t = 1
         if abs(Vr - Vl) <= 1e-6:
             new_x = x + Vl * math.cos(angle) * delta_t
             new_y = y + Vl * math.sin(angle) * delta_t
@@ -54,19 +54,19 @@ class Robot:
         x_upper = math.ceil(x + self.radius)
         y_upper = math.ceil(y + self.radius)
 
-        i = x_lower
+        # i = x_lower
         colliding_x = 0
         colliding_y = 0
         min_distance = float('inf')
-        for i in range(x_upper):
+        for i in range(x_lower,x_upper):
             j = y_lower
-            for j in range(y_upper):
+            for j in range(y_lower,y_upper):
                 if(map[j][i] == 1):
                     dx = x - i
                     dy = y - j
-                    for m in [[0,0.5],[0,-0.5],[0.5,0],[-0.5,0]]:
-                        dm_x = dx + m[0]
-                        dm_y = dy + m[1]
+                    for m in [[0,0],[0,CELL_SIZE],[CELL_SIZE,0],[CELL_SIZE,CELL_SIZE]]:
+                        dm_x = dx + m[0] 
+                        dm_y = dy + m[1] 
                         distance = math.sqrt(dm_x * dm_x + dm_y * dm_y)
                         colliding = distance < self.radius
                         if(colliding):
@@ -76,7 +76,7 @@ class Robot:
                                 colliding_y = j
                                 mov_dist = self.radius - min_distance + 1/2
                                 vec = np.array([dx,dy])
-                                normalized_v = vec / np.sqrt(np.sum(vec**2))
+                                normalized_v = vec / np.sqrt(np.sum(np.square(vec)))
                                 move_vec = normalized_v*mov_dist
 
 
@@ -85,11 +85,12 @@ class Robot:
         if(min_distance == float('inf')):
             self.position = [self.position[0]+v[0],self.position[1]+v[1]]
         else:
-
-            left_x = colliding_x - 0.5
-            right_x = colliding_x + 0.5
-            top_y = colliding_y - 0.5
-            bottom_y = colliding_y + 0.5
+            colliding_x += 0.5*CELL_SIZE
+            colliding_y += 0.5*CELL_SIZE
+            left_x = colliding_x - 0.5*CELL_SIZE
+            right_x = colliding_x + 0.5*CELL_SIZE
+            top_y = colliding_y - 0.5*CELL_SIZE
+            bottom_y = colliding_y + 0.5*CELL_SIZE
             
             left_dist = self.distance(x,y,left_x,colliding_y)
             right_dist = self.distance(x,y,right_x,colliding_y)
@@ -100,22 +101,24 @@ class Robot:
 
             n = None
             if(min_dist == left_dist):
-                n = [-1,0]
+                n = [-CELL_SIZE,0]
                 
             elif(min_dist == right_dist):
-                n = [1,0]
+                n = [CELL_SIZE,0]
                 
             elif(min_dist == top_dist):
-                n = [0,-1]
+                n = [0,-CELL_SIZE]
                 
             else:
-                n = [0,1]
+                n = [0,CELL_SIZE]
             
             n = np.array(n)
             v_perp = (np.dot(np.array(v).T,n)*n)
             v_par = v - v_perp
-            self.position = [self.position[0]+move_vec[0],self.position[1]+move_vec[1]]
-            self.position = [self.position[0]+v_par[0],self.position[1]+v_par[1]]
+
+            update = v_par+move_vec
+            self.position = [self.position[0]+update[0],self.position[1]+update[1]]
+            # self.position = [self.position[0]+v_par[0],self.position[1]+v_par[1]]
       
 
     def distance(self,x1,y1,x2,y2):
