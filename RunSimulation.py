@@ -60,10 +60,10 @@ def draw_robot(screen, robot):
                             robot.sensors[i].intersection_point, 1)
             pygame.draw.circle(screen, (0,255,00), robot.sensors[i].intersection_point,4)
             screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), robot.sensors[i].intersection_point)
-    pygame.draw.circle(screen, RED, robot.position, robot.radius)
-
-        # Uncomment for debugging: print the sensor data
-        # print(robot.sensors[0].starting_point, robot.sensors[0].ending_point)
+    pygame.draw.circle(screen, RED, robot.position, robot.radius)#
+    pygame.draw.line(screen, BLACK,
+                            robot.sensors[0].starting_point,
+                            robot.sensors[0].intersection_point, 1)
 
 def main():
     
