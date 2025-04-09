@@ -134,7 +134,7 @@ class Robot:
     def update(self,map):
         
         # logic stuff 
-        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,3,3)
+        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,2,1)
         # print(pose)
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
         self.collision_check(map,v,pose[2])
@@ -170,13 +170,6 @@ class Sensor:
         return math.sqrt(dx * dx + dy * dy)
 
     def get_endpoint (self, start_point, angle_radians, length):
-        """
-        Draws a line in 2D space with:
-        - start_point: (x0, y0)
-        - angle_radians: direction in radians (0 = right, π/2 = up)
-        - length: distance to extend the line
-        - num_points: number of points for smoothness
-        """
         x0, y0 = start_point
         
         # Direction vector (unit length)
@@ -208,17 +201,7 @@ class Sensor:
         return [x_values, y_values]
 
     def get_num_points_between(self, point1, point2, step_size=1):
-        """
-        Computes the number of points between two points given a step size.
-        
-        Args:
-            point1 (tuple): (x1, y1)
-            point2 (tuple): (x2, y2)
-            step_size (float): Distance between consecutive points.
-        
-        Returns:
-            int: Number of points.
-        """
+ 
         x1, y1 = point1
         x2, y2 = point2
         
