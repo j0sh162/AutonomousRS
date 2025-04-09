@@ -18,7 +18,7 @@ RED = (255, 0, 0)
 
 pygame.init()
 pygame.font.init() 
-FONT = pygame.font.Font("/home/oistin/Documents/Github/AutonomousRS/ComicNeueSansID.ttf", 20)
+FONT = pygame.font.Font("ComicNeueSansID.ttf", 20)
 
 
 
