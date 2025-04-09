@@ -2,6 +2,7 @@ import math
 import numpy as np
 
 CELL_SIZE = 1
+SENSOR_RANGE = 850 # arbitrary
 class Robot:
 
     l = 24 # distance between wheels in metres
@@ -14,7 +15,12 @@ class Robot:
         self.position = position
         self.angle = angle
         self.radius = self.l/2
-        self.sensors = [Sensor(list(position),0,30,self)]
+        self.sensors = [Sensor(list(position),0,SENSOR_RANGE,self), Sensor(list(position), math.pi,SENSOR_RANGE,self),
+                        Sensor(list(position),1,SENSOR_RANGE,self), Sensor(list(position),-1,SENSOR_RANGE,self), 
+                        Sensor(list(position),0.5,SENSOR_RANGE,self), Sensor(list(position),-0.5,SENSOR_RANGE,self), 
+                        Sensor(list(position),-1.5,SENSOR_RANGE,self), Sensor(list(position),1.5,SENSOR_RANGE,self),
+                        Sensor(list(position),2,SENSOR_RANGE,self), Sensor(list(position),-2,SENSOR_RANGE,self), 
+                        Sensor(list(position),-2.5,SENSOR_RANGE,self), Sensor(list(position),2.5,SENSOR_RANGE,self)]
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
         delta_t = 1
@@ -77,7 +83,7 @@ class Robot:
                                 mov_dist = self.radius - min_distance + 1/2
                                 vec = np.array([dx,dy])
                                 normalized_v = vec / np.sqrt(np.sum(np.square(vec)))
-                                move_vec = normalized_v*mov_dist
+                                move_vec = normalized_v*mov_dist*0.7 # this is chosen to avoid too many visual bugs but may need to be disabled.
 
 
         self.angle = float(angle)
@@ -119,7 +125,6 @@ class Robot:
             update = v_par+move_vec
             self.position = [self.position[0]+update[0],self.position[1]+update[1]]
             # self.position = [self.position[0]+v_par[0],self.position[1]+v_par[1]]
-      
 
     def distance(self,x1,y1,x2,y2):
         dx = x1 - x2
@@ -133,21 +138,25 @@ class Robot:
         # print(pose)
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
         self.collision_check(map,v,pose[2])
-        self.sensors[0].update((float(self.position[0]),float(self.position[1])), map)
+        
+        for sensor in self.sensors:
+            sensor.update((float(self.position[0]),float(self.position[1])), map)
         # print(self.position)
-        print(pose[2])
+        # print(pose[2])
         # self.position = (float(pose[0]), float(pose[1]))
     
-        
         return pose
 
 class Sensor:
 
+    distance = 255
     direction = 0
     length = 0
     robot = None
     starting_point = [0,0]
     ending_point = [0,0]
+    intersection_point = [-30,-30]
+    
 
     def __init__(self, starting_point, direction, length, robot):
         self.length = length
@@ -155,7 +164,11 @@ class Sensor:
         self.robot = robot
         self.starting_point = starting_point
     
-        
+    def calculate_distance(self,x1,y1,x2,y2):
+        dx = x1 - x2
+        dy = y1 - y2
+        return math.sqrt(dx * dx + dy * dy)
+
     def get_endpoint (self, start_point, angle_radians, length):
         """
         Draws a line in 2D space with:
@@ -174,8 +187,7 @@ class Sensor:
         end_x = x0 + length * dx
         end_y = y0 + length * dy
 
-        return [float(end_x), float(end_y)]
-    
+        return [float(end_x), float(end_y)] 
        
     def get_points_on_line(self, start_point, angle_radians, length):
 
@@ -195,7 +207,7 @@ class Sensor:
 
         return [x_values, y_values]
 
-    def get_num_points_between(self, point1, point2, step_size=0.1):
+    def get_num_points_between(self, point1, point2, step_size=1):
         """
         Computes the number of points between two points given a step size.
         
@@ -218,8 +230,7 @@ class Sensor:
         
         return num_points
     
-    def get_overlap_distance(self, map):
-        print("test")
+    def update_intersection_point(self, map):
         points = self.get_points_on_line(self.starting_point,self.robot.angle+self.direction, self.length)
         # map is a 2d array with ones and zeros
         #array looks like this [[x1,x2...],[y1,y2...]]
@@ -227,18 +238,13 @@ class Sensor:
             x = int(points[0][i])
             y = int(points[1][i])
             if int(map[y][x]) == 1:
+                self.intersection_point = [x,y]
                 return (x, y)
-            
+        self.intersection_point =[-30,-30]
         return None
-
     
     def update(self, starting_point, map):
         self.starting_point = starting_point
         self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
-        print(self.get_overlap_distance(map))
-
-def main():
-    r = Robot((0,0), 0)
-
-if __name__ == '__main__':
-    main()
+        self.update_intersection_point(map)
+        self.distance = self.calculate_distance(self.starting_point[0],self.starting_point[1],self.intersection_point[0],self.intersection_point[1])
