@@ -144,7 +144,7 @@ class Sensor:
     starting_point = [0,0]
     ending_point = [0,0]
     intersection_point = [-30,-30]
-    
+    text_draw_point = [-30,-30]
 
     def __init__(self, starting_point, direction, length, robot):
         self.length = length
@@ -168,7 +168,7 @@ class Sensor:
 
         return [float(end_x), float(end_y)] 
        
-    def get_points_on_line(self, start_point, angle_radians, length):
+    def get_points_on_line(self, start_point, angle_radians, length, resolution=1):
         x0, y0 = start_point
         
         dx = np.cos(angle_radians)
@@ -177,7 +177,7 @@ class Sensor:
         end_x = x0 + length * dx
         end_y = y0 + length * dy
 
-        num_points = self.get_num_points_between((x0,y0),(end_x,end_y), 1)
+        num_points = self.get_num_points_between((x0,y0),(end_x,end_y), resolution)
         x_values = np.linspace(x0, end_x, num_points)
         y_values = np.linspace(y0, end_y, num_points)
 
@@ -208,3 +208,6 @@ class Sensor:
         self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
         self.update_intersection_point(map)
         self.distance = self.calculate_distance(self.starting_point[0],self.starting_point[1],self.intersection_point[0],self.intersection_point[1])
+        points = self.get_points_on_line(self.starting_point,self.robot.angle+self.direction, 51,1)
+        self.text_draw_point = [points[0][50],points[1][50]]
+        # print(self.text_draw_point)

@@ -86,7 +86,7 @@ def draw_robot(screen, robot):
                             robot_draw_postion,
                             sensor_draw_position, 1)
             pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
-            screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), sensor_draw_position)
+            screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), robot.sensors[i].text_draw_point)
     pygame.draw.circle(screen, RED, robot_draw_postion, robot.radius)#
     pygame.draw.line(screen, BLACK,
                             robot_draw_postion,
