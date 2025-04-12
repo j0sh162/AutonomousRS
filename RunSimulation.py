@@ -4,6 +4,7 @@ import numpy as np
 import struct
 from State import State 
 from PIL import Image
+from collections import deque
 
 # Constants
 WIDTH, HEIGHT = 1, 1
@@ -19,7 +20,7 @@ RED = (255, 0, 0)
 pygame.init()
 pygame.font.init() 
 FONT = pygame.font.Font("ComicNeueSansID.ttf", 20)
-
+INTERPOLATION = True
 
 
 def read_bmp_with_pillow(file_path):
@@ -51,18 +52,44 @@ def create_background_surface(grid):
                              (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
     return background
 
+stored_postion = deque(maxlen=5) # test this for diff values
+senor_endpoints = []
+
+def interpolation(deque):
+    output = [0,0]
+    x_values = [p[0] for p in deque]
+    output[0] = int(sum(x_values) / len(x_values))
+    y_values = [p[1] for p in deque]
+    output[1] = int(sum(y_values) / len(y_values))
+    return output
+
+
 def draw_robot(screen, robot):
-    # Draw the robot's sensor line (if available)
+
+    # Robot position interpolation 
+    if INTERPOLATION:
+        stored_postion.append([int(robot.position[0]),int(robot.position[1])])
+        robot_draw_postion = interpolation(stored_postion)
+    else:
+        robot_draw_postion = robot.position
+
     if robot.sensors and len(robot.sensors) > 0:
         for i in range(0,len(robot.sensors)):
+            # interpolation for sensor intersection points:
+            if INTERPOLATION:
+                senor_endpoints[i].append(robot.sensors[i].intersection_point)
+                sensor_draw_position = interpolation(senor_endpoints[i])
+            else:
+                sensor_draw_position = robot.sensors[i].intersection_point
+
             pygame.draw.line(screen, BLACK,
-                            robot.sensors[i].starting_point,
-                            robot.sensors[i].intersection_point, 1)
-            pygame.draw.circle(screen, (0,255,00), robot.sensors[i].intersection_point,4)
-            screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), robot.sensors[i].intersection_point)
-    pygame.draw.circle(screen, RED, robot.position, robot.radius)#
+                            robot_draw_postion,
+                            sensor_draw_position, 1)
+            pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
+            screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), sensor_draw_position)
+    pygame.draw.circle(screen, RED, robot_draw_postion, robot.radius)#
     pygame.draw.line(screen, BLACK,
-                            robot.sensors[0].starting_point,
+                            robot_draw_postion,
                             robot.sensors[0].intersection_point, 1)
 
 def main():
@@ -75,6 +102,10 @@ def main():
 
     # Initialize state and cache the static grid as background.
     state = State(read_bmp_with_pillow('map2.bmp'))
+    if INTERPOLATION:
+        for sensor in state.robot.sensors:
+            senor_endpoints.append(deque(maxlen=5))
+
     print(np.shape(state.map))
     background = create_background_surface(state.map)
     running = True
