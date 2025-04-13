@@ -19,7 +19,7 @@ RED = (255, 0, 0)
 
 pygame.init()
 pygame.font.init() 
-FONT = pygame.font.Font("ComicNeueSansID.ttf", 20)
+FONT = pygame.font.Font("ComicNeueSansID.ttf", 16)
 INTERPOLATION = True
 
 
@@ -74,24 +74,31 @@ def draw_robot(screen, robot):
         robot_draw_postion = robot.position
 
     if robot.sensors and len(robot.sensors) > 0:
-        for i in range(0,len(robot.sensors)):
+        for i in range(1,len(robot.sensors)):
             # interpolation for sensor intersection points:
             if INTERPOLATION:
                 senor_endpoints[i].append(robot.sensors[i].intersection_point)
                 sensor_draw_position = interpolation(senor_endpoints[i])
             else:
                 sensor_draw_position = robot.sensors[i].intersection_point
-
+        
             pygame.draw.line(screen, BLACK,
                             robot_draw_postion,
                             sensor_draw_position, 1)
             pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
             screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), robot.sensors[i].text_draw_point)
     pygame.draw.circle(screen, RED, robot_draw_postion, robot.radius)#
+    
+    if INTERPOLATION:
+        senor_endpoints[0].append(robot.sensors[0].intersection_point)
+        sensor_draw_position = interpolation(senor_endpoints[0])
+    else:
+        sensor_draw_position = robot.sensors[0].intersection_point
+
     pygame.draw.line(screen, BLACK,
                             robot_draw_postion,
-                            robot.sensors[0].intersection_point, 1)
-
+                            sensor_draw_position, 2)
+    pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
 def main():
     
     # Use hardware acceleration and double buffering for better performance.
