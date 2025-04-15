@@ -20,8 +20,10 @@ RED = (255, 0, 0)
 pygame.init()
 pygame.font.init() 
 FONT = pygame.font.Font("ComicNeueSansID.ttf", 16)
+# Makes visualisation nicer without affecting underlying logic
 INTERPOLATION = True
-
+# Shows the path of the robot 
+TRAIL = True
 
 def read_bmp_with_pillow(file_path):
     # Open the image file using Pillow
@@ -64,7 +66,7 @@ def interpolation(deque):
     return output
 
 
-def draw_robot(screen, robot):
+def draw_robot(screen, robot, trail_counter, trail):
 
     # Robot position interpolation 
     if INTERPOLATION:
@@ -72,6 +74,14 @@ def draw_robot(screen, robot):
         robot_draw_postion = interpolation(stored_postion)
     else:
         robot_draw_postion = robot.position
+
+    # Drawing the trail behind the robot
+    if TRAIL and trail_counter == 0:
+        trail.append((robot.position[0],robot.position[1]))
+
+    for postion in trail:
+        pygame.draw.circle(screen, (0,0,0), postion, 2)
+
 
     if robot.sensors and len(robot.sensors) > 0:
         for i in range(1,len(robot.sensors)):
@@ -87,7 +97,8 @@ def draw_robot(screen, robot):
                             sensor_draw_position, 1)
             pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
             screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), robot.sensors[i].text_draw_point)
-    pygame.draw.circle(screen, RED, robot_draw_postion, robot.radius)#
+    pygame.draw.circle(screen, RED, robot_draw_postion, robot.radius)
+    
     
     if INTERPOLATION:
         senor_endpoints[0].append(robot.sensors[0].intersection_point)
@@ -99,12 +110,14 @@ def draw_robot(screen, robot):
                             robot_draw_postion,
                             sensor_draw_position, 2)
     pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
+
 def main():
-    
+    trail_counter = 0
+    trail = []
     # Use hardware acceleration and double buffering for better performance.
     screen = pygame.display.set_mode((COLS * CELL_SIZE, ROWS * CELL_SIZE),
                                      pygame.HWSURFACE | pygame.DOUBLEBUF)
-    pygame.display.set_caption("Maze Generator")
+    pygame.display.set_caption("Simulation")
     clock = pygame.time.Clock()
 
     # Initialize state and cache the static grid as background.
@@ -117,10 +130,15 @@ def main():
     background = create_background_surface(state.map)
     running = True
     while running:
+        
         # Blit the cached background instead of drawing each cell per frame.
         screen.blit(background, (0, 0))
-        draw_robot(screen, state.robot)
-
+        draw_robot(screen, state.robot, trail_counter,trail)
+        if TRAIL:
+            trail_counter +=1
+            if trail_counter == 20:
+                trail_counter = 0
+                
         # Process events.
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
