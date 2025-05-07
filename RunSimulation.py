@@ -129,6 +129,7 @@ def main():
     print(np.shape(state.map))
     background = create_background_surface(state.map)
     running = True
+    
     while running:
         
         # Blit the cached background instead of drawing each cell per frame.

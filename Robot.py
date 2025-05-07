@@ -2,7 +2,7 @@ import math
 import numpy as np
 
 CELL_SIZE = 1
-SENSOR_RANGE = 850 # arbitrary
+SENSOR_RANGE = 850 # arbitrary this one is based on map size.
 DELTA_T = .8
 L = 24 # distance bewteen wheels
 
@@ -126,9 +126,11 @@ class Robot:
         dy = y1 - y2
         return math.sqrt(dx * dx + dy * dy)
 
-    def update(self,map):
-        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,1.1,1)
+    def update(self,map, action):
+        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,action[0],action[1])
+        
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
+
         self.collision_check(map,v,pose[2])
         
         for sensor in self.sensors:

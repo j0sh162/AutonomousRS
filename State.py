@@ -15,14 +15,12 @@ MAZE = maze = [
 ]
 
 class State():
-    def __init__(self,map):
+    def __init__(self,map, robot_start_postion):
         self.map = map
-        self.robot = Robot((15,20),PI/2)  
+        self.robot = Robot(robot_start_postion,PI/2)  
 
     
     #TODO make efficient
-
-
     
     def update(self):
         self.robot.update(self.map)
