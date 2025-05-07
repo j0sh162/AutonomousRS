@@ -4,7 +4,7 @@ import struct
 from State import State 
 from PIL import Image
 from collections import deque
-import Robot
+from Robot import Robot
 from math import pi
 # Constants
 # WIDTH, HEIGHT = 1, 1
@@ -47,4 +47,3 @@ class RobotEnviroment:
 
     def reset(self):
         self.state.robot = Robot(self.DEFAULT_START_LOCATION,pi/2)
-        

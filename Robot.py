@@ -137,6 +137,14 @@ class Robot:
             sensor.update((float(self.position[0]),float(self.position[1])), map)
         return pose
 
+    def get_state(self):
+        mystate = [self.position[0],self.position[1], self.angle]
+
+        for sensor in self.sensors:
+            mystate.append(sensor.get_distance())
+
+        return mystate
+    
 class Sensor:
 
     distance = 1
@@ -204,6 +212,9 @@ class Sensor:
                 return (x, y)
         self.intersection_point =[-30,-30]
         return None
+    
+    def get_distance(self):
+        return self.distance
     
     def update(self, starting_point, map):
         self.starting_point = starting_point
