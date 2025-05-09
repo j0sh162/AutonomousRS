@@ -6,6 +6,7 @@ from PIL import Image
 from collections import deque
 from Robot import Robot
 from math import pi
+import math
 # Constants
 # WIDTH, HEIGHT = 1, 1
 
@@ -16,7 +17,7 @@ from math import pi
 class RobotEnviroment:
 
     state = None
-    
+
     DEFAULT_START_LOCATION = (20,20) 
 
     def __init__(self, mapfilename):
@@ -45,5 +46,8 @@ class RobotEnviroment:
     def step(self, action):
         self.state.robot.update(action)
 
+                    
     def reset(self):
         self.state.robot = Robot(self.DEFAULT_START_LOCATION,pi/2)
+        self.state.apple_locations = self.generate_points(30)
+        self.reward = 0

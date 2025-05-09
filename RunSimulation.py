@@ -95,7 +95,7 @@ def draw_robot(screen, robot, trail_counter, trail):
             pygame.draw.line(screen, BLACK,
                             robot_draw_postion,
                             sensor_draw_position, 1)
-            pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
+            pygame.draw.circle(screen, (0,130,100), sensor_draw_position,4)
             screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), robot.sensors[i].text_draw_point)
     pygame.draw.circle(screen, RED, robot_draw_postion, robot.radius)
     
@@ -109,7 +109,11 @@ def draw_robot(screen, robot, trail_counter, trail):
     pygame.draw.line(screen, BLACK,
                             robot_draw_postion,
                             sensor_draw_position, 2)
-    pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
+    pygame.draw.circle(screen, (0,130,120), sensor_draw_position,4)
+
+def draw_apples(state, screen):
+    for apple in state.apple_locations:
+        pygame.draw.circle(screen, (0,255,100), apple,4)
 
 def main():
     trail_counter = 0
@@ -121,7 +125,7 @@ def main():
     clock = pygame.time.Clock()
 
     # Initialize state and cache the static grid as background.
-    state = State(read_bmp_with_pillow('map2.bmp'))
+    state = State(read_bmp_with_pillow('map2.bmp'), (20,25))
     if INTERPOLATION:
         for sensor in state.robot.sensors:
             senor_endpoints.append(deque(maxlen=5))
@@ -134,7 +138,9 @@ def main():
         
         # Blit the cached background instead of drawing each cell per frame.
         screen.blit(background, (0, 0))
+        draw_apples(state,screen)
         draw_robot(screen, state.robot, trail_counter,trail)
+
         if TRAIL:
             trail_counter +=1
             if trail_counter == 20:
@@ -146,7 +152,7 @@ def main():
                 running = False
 
         pygame.display.flip()
-        state.update()
+        state.update([1.1,1])
         clock.tick(60)  # Cap the frame rate to 60 FPS
 
     pygame.quit()
