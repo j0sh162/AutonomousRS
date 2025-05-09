@@ -5,7 +5,7 @@ import numpy as np
 import random
 from deap import base, creator, tools, algorithms
 import pickle
-import multiprocessing
+
 from PIL import Image
 from State import State
 
@@ -69,6 +69,7 @@ def model_weights_as_matrix(model, weights_vector):
     return weights_matrix
 
 def evaluate(individual,award=0):
+    
     env.reset()     #Initiate the game
     model = model_build()   #call the model
 
@@ -86,55 +87,59 @@ def evaluate(individual,award=0):
     #Below first we have the stopping condition for each gameplay by each individual (chromosome). 
     #The condition on step is given so that the game is not trapped somewhere and goes on forever
     
-    while (done == False) and (step<=1): 
+    while (done == False) and (step<=1000): 
       
       #All the below steps are to  reshape the observation to make it the input layer of the NN
         #TODO implement full run to get reward.
-
-        env.update(list(model.predict(np.asarray(env.getstate()).reshape(1, -1))[0]))
-        
+    
+        env.update(list(model.predict(np.asarray(env.getstate()).reshape(1, -1), verbose=0)[0]))        
         step = step+1   #Increase the counter
 
     award = env.reward
     return (award,)
 
-model = model_build()
-ind_size = model.count_params()
-print(ind_size)
-print(model.summary())
+if __name__ == "__main__":
 
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-creator.create("Individual", list, fitness=creator.FitnessMax)
-toolbox = base.Toolbox()
-toolbox.register("weight_bin", np.random.uniform,-1,1)
-toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.weight_bin, n=ind_size)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+    import multiprocessing
 
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)
-toolbox.register("select", tools.selTournament, tournsize=3)
-toolbox.register("evaluate", evaluate)
+    model = model_build()
+    ind_size = model.count_params()
+    print(ind_size)
+    print(model.summary())
 
-# pool = multiprocessing.Pool()
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    creator.create("Individual", list, fitness=creator.FitnessMax)
+    toolbox = base.Toolbox()
+    toolbox.register("weight_bin", np.random.uniform,-1,1)
+    toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.weight_bin, n=ind_size)
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-# toolbox.register("map", pool.map)
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)
+    toolbox.register("select", tools.selTournament, tournsize=3)
+    toolbox.register("evaluate", evaluate)
 
-stats = tools.Statistics(lambda ind: ind.fitness.values)
-stats.register("Mean", np.mean)
-stats.register("Max", np.max)
-stats.register("Min", np.min)
+    pool = multiprocessing.Pool()
+    toolbox.register("map", pool.map)
 
-
-
-pop = toolbox.population(n=100)
-hof = tools.HallOfFame(1)
-# print(np.asarray(env.getstate()).shape)
-# print(np.asarray(env.getstate()))
-# print(list(model.predict(np.asarray(env.getstate()).reshape(1, -1))[0]))
-
-pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.8, mutpb=0.2, ngen=30, halloffame=hof, stats=stats)
+    stats = tools.Statistics(lambda ind: ind.fitness.values)
+    stats.register("Mean", np.mean)
+    stats.register("Max", np.max)
+    stats.register("Min", np.min)
 
 
-with open("robotmodel.pkl", "wb") as cp_file:
 
-    pickle.dump(hof.items[0], cp_file)
+    pop = toolbox.population(n=100)
+    hof = tools.HallOfFame(1)
+    # print(np.asarray(env.getstate()).shape)
+    # print(np.asarray(env.getstate()))
+    # print(list(model.predict(np.asarray(env.getstate()).reshape(1, -1))[0]))
+
+    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.8, mutpb=0.2, ngen=30, halloffame=hof, stats=stats)
+
+    pool.close()
+    pool.join()
+
+    with open("robotmodel.pkl", "wb") as cp_file:
+
+        pickle.dump(hof.items[0], cp_file)

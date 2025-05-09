@@ -59,7 +59,7 @@ class State():
         for apple in to_remove:
             self.apple_locations.remove(apple)
 
-        print(self.reward)
+        # print(self.reward)
 
     def reset(self):
         self.robot = Robot(self.robot_start_postion,3.141/2)  
