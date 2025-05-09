@@ -37,6 +37,7 @@ class State():
     
     def update(self, action):
         self.robot.update(self.map, action)
+
         x, y = self.robot.position
         x_lower = math.floor(x - self.robot.radius)
         y_lower = math.floor(y - self.robot.radius)
@@ -52,10 +53,13 @@ class State():
                     self.reward += 1
                     to_remove.append((i, j))
                     # print("APPLE FOUND")
+                if(self.map[j][i] == 1):
+                    self.reward -= 0.01
+
         for apple in to_remove:
             self.apple_locations.remove(apple)
 
-        # print(self.reward)
+        print(self.reward)
 
     def reset(self):
         self.robot = Robot(self.robot_start_postion,3.141/2)  

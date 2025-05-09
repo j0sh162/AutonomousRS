@@ -5,7 +5,7 @@ import numpy as np
 import random
 from deap import base, creator, tools, algorithms
 import pickle
-
+import multiprocessing
 from PIL import Image
 from State import State
 
@@ -115,7 +115,9 @@ toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)
 toolbox.register("select", tools.selTournament, tournsize=3)
 toolbox.register("evaluate", evaluate)
 
+# pool = multiprocessing.Pool()
 
+# toolbox.register("map", pool.map)
 
 stats = tools.Statistics(lambda ind: ind.fitness.values)
 stats.register("Mean", np.mean)
