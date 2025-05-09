@@ -1,13 +1,13 @@
 from Robot import Robot
 import random
 import math
-
 class State():
 
     #TODO put points all over the space and check if the robot has touched them if he touched them remove from list them and to reward
     apple_locations = []
     reward = 0
     robot_start_postion = [25,25]
+    
 
     def __init__(self,map, robot_start_postion):
         self.map = map
@@ -15,6 +15,8 @@ class State():
         self.apple_locations = self.generate_points(30)
         self.reward = 0
 
+    def getstate(self):
+        return self.robot.get_state()
 
     def generate_points(self, num_points):
         height = len(self.map)
@@ -49,11 +51,12 @@ class State():
                 if (i, j) in self.apple_locations:
                     self.reward += 1
                     to_remove.append((i, j))
-                    print("APPLE FOUND")
+                    # print("APPLE FOUND")
         for apple in to_remove:
             self.apple_locations.remove(apple)
 
-        print(self.reward)
+        # print(self.reward)
+
     def reset(self):
         self.robot = Robot(self.robot_start_postion,3.141/2)  
         self.apple_locations = self.generate_points(30)

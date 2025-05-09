@@ -141,7 +141,7 @@ class Robot:
 
     def get_state(self):
         mystate = [self.position[0],self.position[1], self.angle]
-
+        # print(len(self.sensors))
         for sensor in self.sensors:
             mystate.append(sensor.get_distance())
 

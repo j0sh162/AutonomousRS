@@ -5,13 +5,36 @@ import numpy as np
 import random
 from deap import base, creator, tools, algorithms
 import pickle
-from RobotEnviroment import RobotEnviroment
+
+from PIL import Image
+from State import State
 
 
-env = RobotEnviroment('map2.bmp')
-env.reset()
-in_dimen = 9 #Total no. of observations made about the environment
+def read_bmp_with_pillow(file_path):
+    # Open the image file using Pillow
+    with Image.open(file_path) as img:
+        # Ensure image is in RGB mode
+        img = img.convert("RGB")
+        width, height = img.size
+        pixels = []
+
+        # Load pixel data
+        for y in range(height):
+            row = []
+            for x in range(width):
+                pixel = img.getpixel((x, y))
+                # If the red channel is 255 then consider that free space (0), else an obstacle (1)
+                val = 0 if pixel[0] == 255 else 1
+                row.append(val)
+            pixels.append(row)
+    return pixels
+
+
+env = State(read_bmp_with_pillow('map2.bmp'), (25,25))
+
+in_dimen = 15 #Total no. of observations made about the environment
 out_dimen = 2
+
 
 
 def model_build(in_dimen=in_dimen,out_dimen=out_dimen):
@@ -47,7 +70,6 @@ def model_weights_as_matrix(model, weights_vector):
 
 def evaluate(individual,award=0):
     env.reset()     #Initiate the game
-    obs1 = env.state.robot.get_state() #Take the observation of the environment at the beginning of the game
     model = model_build()   #call the model
 
     #set the weight of the model from the previous run of GA. 
@@ -64,12 +86,16 @@ def evaluate(individual,award=0):
     #Below first we have the stopping condition for each gameplay by each individual (chromosome). 
     #The condition on step is given so that the game is not trapped somewhere and goes on forever
     
-    while (done == False) and (step<=1000): 
+    while (done == False) and (step<=1): 
       
       #All the below steps are to  reshape the observation to make it the input layer of the NN
         #TODO implement full run to get reward.
+
+        env.update(list(model.predict(np.asarray(env.getstate()).reshape(1, -1))[0]))
         
         step = step+1   #Increase the counter
+
+    award = env.reward
     return (award,)
 
 model = model_build()
@@ -77,35 +103,36 @@ ind_size = model.count_params()
 print(ind_size)
 print(model.summary())
 
-# creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-# creator.create("Individual", list, fitness=creator.FitnessMax)
-# toolbox = base.Toolbox()
-# toolbox.register("weight_bin", np.random.uniform,-1,1)
-# toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.weight_bin, n=ind_size)
-# toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMax)
+toolbox = base.Toolbox()
+toolbox.register("weight_bin", np.random.uniform,-1,1)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.weight_bin, n=ind_size)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-
-# toolbox.register("mate", tools.cxTwoPoint)
-# toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)
-# toolbox.register("select", tools.selTournament, tournsize=3)
-# toolbox.register("evaluate", evaluate)
-
-
-
-# stats = tools.Statistics(lambda ind: ind.fitness.values)
-# stats.register("Mean", np.mean)
-# stats.register("Max", np.max)
-# stats.register("Min", np.min)
+toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)
+toolbox.register("select", tools.selTournament, tournsize=3)
+toolbox.register("evaluate", evaluate)
 
 
 
-# pop = toolbox.population(n=100)
-# hof = tools.HallOfFame(1)
+stats = tools.Statistics(lambda ind: ind.fitness.values)
+stats.register("Mean", np.mean)
+stats.register("Max", np.max)
+stats.register("Min", np.min)
 
 
-# pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.8, mutpb=0.2, ngen=30, halloffame=hof, stats=stats)
+
+pop = toolbox.population(n=100)
+hof = tools.HallOfFame(1)
+# print(np.asarray(env.getstate()).shape)
+# print(np.asarray(env.getstate()))
+# print(list(model.predict(np.asarray(env.getstate()).reshape(1, -1))[0]))
+
+pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.8, mutpb=0.2, ngen=30, halloffame=hof, stats=stats)
 
 
-# with open("lunarlander_model.pkl", "wb") as cp_file:
+with open("robotmodel.pkl", "wb") as cp_file:
 
-#     pickle.dump(hof.items[0], cp_file)
+    pickle.dump(hof.items[0], cp_file)
