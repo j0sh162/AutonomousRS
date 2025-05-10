@@ -159,7 +159,7 @@ def draw_apples(state, screen):
 def main():
 
     # --- Step 2: Load the Best GA Individual (Flat Weights Vector) ---
-    with open("robotmodel.pkl", "rb") as f:
+    with open("robotmodel1000.pkl", "rb") as f:
         best_weights_vector = pickle.load(f)
 
     # --- Step 3: Rebuild Model Architecture ---

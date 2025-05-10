@@ -48,8 +48,6 @@ class Robot:
 
         return np.dot(rotation,second_part) + third_part
     
-
-
     def collision_check(self,map,v,angle):
         x,y = self.position
         x_lower = math.floor(x - self.radius)
@@ -222,7 +220,7 @@ class Sensor:
         self.starting_point = starting_point
         self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
         self.update_intersection_point(map)
-        self.distance = min(255.0, max(1, self.calculate_distance(self.starting_point[0],self.starting_point[1],self.intersection_point[0],self.intersection_point[1])))   
+        self.distance = min(255.0, max(1, self.calculate_distance(self.starting_point[0],self.starting_point[1],self.intersection_point[0],self.intersection_point[1])))/255.0
         points = self.get_points_on_line(self.starting_point,self.robot.angle+self.direction, 51,1)
         self.text_draw_point = [points[0][50],points[1][50]]
         # print(self.text_draw_point)

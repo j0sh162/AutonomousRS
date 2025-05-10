@@ -66,9 +66,9 @@ class State():
         self.apple_locations = self.generate_points(30)
         self.reward = 0
     
-if __name__ == "__main__":
-    state = State()
-    i  = 0
-    while (i <= 100):
-        state.update()
-        i += 1
+# if __name__ == "__main__":
+#     state = State()
+#     i  = 0
+#     while (i <= 100):
+#         state.update()
+#         i += 1
