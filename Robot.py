@@ -1,18 +1,83 @@
 import math
 import numpy as np
+import jax
 
 CELL_SIZE = 1
 SENSOR_RANGE = 850 # arbitrary
 DELTA_T = .8
 L = 24 # distance bewteen wheels
 
+def is_within_radius(current_position, target_point, radius = 5):
+  """
+  Checks if a target point is within a given radius of the current position
+  using squared distances for efficiency.
+
+  Args:
+    current_position (tuple): A tuple (x, y) representing the center point.
+    target_point (tuple): A tuple (x, y) representing the point to check.
+    radius (float or int): The radius. Must be non-negative.
+
+  Returns:
+    bool: True if the target point is within or on the boundary of the
+          radius, False otherwise.
+
+  Raises:
+    ValueError: If the radius is negative.
+  """
+  if radius < 0:
+      raise ValueError("Radius cannot be negative")
+
+  x1, y1 = current_position
+  x2, y2 = target_point
+
+  # Calculate squared distance
+  distance_sq = (x2 - x1)**2 + (y2 - y1)**2
+
+  # Compare squared distance with squared radius
+  return distance_sq <= radius**2
+
+
+def logodds2prob(logodds):
+    return 1 - 1 / (1 + np.exp(logodds) + 1e-15)
+
+
+def prob2logodds(prob):
+    return np.log(prob / (1 - prob + 1e-15))
+
+def remove_point_from_list(list_of_points, point_to_remove):
+    """
+    Removes all occurrences of a specific point from a list of points.
+    Returns a new list.
+    """
+    # Ensure point_to_remove is in a comparable format (e.g., tuple)
+    # if your list_of_points contains tuples.
+    # If list_of_points contains lists, point_to_remove should be a list.
+    # For simplicity, let's assume consistent types or convert.
+    if isinstance(point_to_remove, list):
+        point_to_remove_tuple = tuple(point_to_remove)
+    else:
+        point_to_remove_tuple = point_to_remove # Assuming it's already a tuple
+
+    new_list = []
+    for p in list_of_points:
+        # Convert current point p to tuple for consistent comparison
+        if isinstance(p, list):
+            current_point_tuple = tuple(p)
+        else:
+            current_point_tuple = p # Assuming it's already a tuple
+
+        if current_point_tuple != point_to_remove_tuple:
+            new_list.append(p) # Append the original point p
+    return new_list
+
 class Robot:
-    
+    beacons = [[87,431],[11,588],[588,437]]
     position = (-30,-30)
     angle = 0
     sensors = []
 
-    def __init__(self, position, angle):
+
+    def __init__(self, position, angle,grid):
         self.position = position
         self.angle = angle
         self.radius = L/2
@@ -22,6 +87,14 @@ class Robot:
                         Sensor(list(position),-1.5,SENSOR_RANGE,self), Sensor(list(position),1.5,SENSOR_RANGE,self),
                         Sensor(list(position),2,SENSOR_RANGE,self), Sensor(list(position),-2,SENSOR_RANGE,self), 
                         Sensor(list(position),-2.5,SENSOR_RANGE,self), Sensor(list(position),2.5,SENSOR_RANGE,self)]
+        self.state_estimate = np.array((3))
+        self.grid = grid
+        self.grid_size = np.shape(self.grid)
+        self.sensitivity_factor = 0.9
+        self.occupy_prob = 0.9
+        self.free_prob = 0.35
+        self.prior_prob= 0.5
+
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
     
@@ -44,10 +117,77 @@ class Robot:
         second_part = np.array([x-icc[0],y-icc[1],angle])
 
         third_part = np.array([icc[0],icc[1],w*DELTA_T])
-       
-
         return np.dot(rotation,second_part) + third_part
     
+
+    # TODO: Add noise to the respones to make it so that its more inline with real life 
+    def motion_model(self):
+        return self.forward_kinematics(self.position[0],self.position[1],self.angle,1.1,1)
+    
+    def get_state(self):
+        return self.position[0],self.position[1],self.angle
+    
+        
+    def set_states(self,pose):
+        self.position = (pose[0],pose[1])
+        self.angle = pose[2]
+
+    
+    def sense(self):
+        occupied_points = []
+        free_points = []
+        distances = []
+        for i in self.sensors:
+            # i.update_intersection_point(self.grid)
+            i.update(self.position,self.grid)
+             #TODO Make sure this is working right 
+            x_int_candidates = np.round(i.ending_point[0]).astype(int)
+            y_int_candidates = np.round(i.ending_point[1]).astype(int)
+            point = np.array([x_int_candidates,y_int_candidates])
+            occupied_points.append(point)
+            free_points = i.get_points_on_line_int()
+            free_points.extend(free_points) #TODO: Make sure this is updated
+            distances.append(i.distance)
+            
+
+        
+        return distances,free_points, occupied_points
+    
+    # TODO: Add noise to the measurments for more realistic environment
+    def measurement_model(self, z_star, z):
+        """
+        Calculates a weight based on the inverse of the sum of absolute differences.
+
+        Args:
+            z_star (np.array): Actual sensor measurements from the robot.
+            z (np.array): Simulated sensor measurements from a particle.
+
+        Returns:
+            float: A weight for the particle. Higher for better matches.
+        """
+        z_star = np.array(z_star)
+        z = np.array(z)
+
+        if z_star.shape != z.shape:
+            # Basic error handling or ensure they are always the same shape
+            # For simplicity, if shapes mismatch, return a very low weight
+            print(
+                "Warning: z_star and z have different shapes in measurement model!"
+            )
+            return 1e-9
+
+        # Calculate the sum of absolute differences for all sensor beams
+        abs_diff = np.abs(z - z_star)
+        sum_abs_diff = np.sum(abs_diff)
+
+        # Calculate weight: inverse of (1 + scaled difference)
+        # Adding 1 ensures that if diff is 0, weight is 1 (or max value).
+        # The sensitivity_factor allows tuning how sharply the weight drops.
+        weight = 1.0 / (1.0 + self.sensitivity_factor * sum_abs_diff)
+
+        return weight
+
+
     def collision_check(self,map,v,angle):
         x,y = self.position
         x_lower = math.floor(x - self.radius)
@@ -126,14 +266,38 @@ class Robot:
         dy = y1 - y2
         return math.sqrt(dx * dx + dy * dy)
 
-    def update(self,map):
+    #TODO: Change the shit out of this 
+    def update(self):
         pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,1.1,1)
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
-        self.collision_check(map,v,pose[2])
-        
+        self.collision_check(self.grid,v,pose[2])
         for sensor in self.sensors:
-            sensor.update((float(self.position[0]),float(self.position[1])), map)
+            sensor.update((float(self.position[0]),float(self.position[1])), self.grid)
         return pose
+
+        
+    def update_occupancy_grid(self, free_grid, occupy_grid):
+        mask1 = np.logical_and(0 < free_grid[:, 0], free_grid[:, 0] < self.grid_size[1])
+        mask2 = np.logical_and(0 < free_grid[:, 1], free_grid[:, 1] < self.grid_size[0])
+        free_grid = free_grid[np.logical_and(mask1, mask2)]
+
+        inverse_prob = self.inverse_sensing_model(False)
+        l = prob2logodds(self.grid[free_grid[:, 1], free_grid[:, 0]]) + prob2logodds(inverse_prob) - prob2logodds(self.prior_prob)
+        self.grid[free_grid[:, 1], free_grid[:, 0]] = logodds2prob(l)
+
+        mask1 = np.logical_and(0 < occupy_grid[:, 0], occupy_grid[:, 0] < self.grid_size[1])
+        mask2 = np.logical_and(0 < occupy_grid[:, 1], occupy_grid[:, 1] < self.grid_size[0])
+        occupy_grid = occupy_grid[np.logical_and(mask1, mask2)]
+
+        inverse_prob = self.inverse_sensing_model(True)
+        l = prob2logodds(self.grid[occupy_grid[:, 1], occupy_grid[:, 0]]) + prob2logodds(inverse_prob) - prob2logodds(self.prior_prob)
+        self.grid[occupy_grid[:, 1], occupy_grid[:, 0]] = logodds2prob(l)
+
+    def inverse_sensing_model(self, occupy):
+        if occupy:
+            return self.occupy_prob
+        else:
+            return self.free_prob
 
 class Sensor:
 
@@ -167,7 +331,8 @@ class Sensor:
         end_y = y0 + length * dy
 
         return [float(end_x), float(end_y)] 
-       
+    
+    # TODO: make sure all the x_values and y_values are integer and non duplicate
     def get_points_on_line(self, start_point, angle_radians, length, resolution=1):
         x0, y0 = start_point
         
@@ -182,6 +347,35 @@ class Sensor:
         y_values = np.linspace(y0, end_y, num_points)
 
         return [x_values, y_values]
+        
+    def get_points_on_line_int(self,resolution=1):
+        x0, y0 = self.starting_point
+        
+        dx = np.cos(self.direction)
+        dy = np.sin(self.direction)
+        
+        end_x = x0 + self.length * dx
+        end_y = y0 + self.length * dy
+
+        num_points = self.get_num_points_between((x0,y0),(end_x,end_y), resolution)
+        x_values = np.linspace(x0, end_x, num_points)
+        y_values = np.linspace(y0, end_y, num_points)
+
+        x_int_candidates = np.round(x_values).astype(int)
+        y_int_candidates = np.round(y_values).astype(int)
+
+        # Store unique integer coordinate pairs, preserving order of appearance
+        unique_ordered_points = []
+        seen_coordinates = set()
+
+        for x_val, y_val in zip(x_int_candidates, y_int_candidates):
+            coord_tuple = (x_val, y_val)
+            if coord_tuple not in seen_coordinates:
+                unique_ordered_points.append(np.array([coord_tuple[0],coord_tuple[1]]))
+                seen_coordinates.add(coord_tuple)
+
+
+        return unique_ordered_points
 
     def get_num_points_between(self, point1, point2, step_size=1):
  
@@ -197,6 +391,10 @@ class Sensor:
         for i in range(len(points[0])):
             x = int(points[0][i])
             y = int(points[1][i])
+            map_height = len(map)
+            map_width = len(map[0])
+            x = max(0, min(x, map_width - 1))
+            y = max(0, min(y, map_height - 1))
             if int(map[y][x]) == 1:
                 self.intersection_point = [x,y]
                 return (x, y)
