@@ -88,7 +88,7 @@ def evaluate(individual,award=0):
     #The condition on step is given so that the game is not trapped somewhere and goes on forever
     time_before = time.time()-start_time
     # print(time_before)
-    while (done == False) and (step<=100): 
+    while (done == False) and (step<=5): 
       
       #All the below steps are to  reshape the observation to make it the input layer of the NN
         #TODO implement full run to get reward.

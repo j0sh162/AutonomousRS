@@ -159,7 +159,7 @@ def draw_apples(state, screen):
 def main():
 
     # --- Step 2: Load the Best GA Individual (Flat Weights Vector) ---
-    with open("robotmodel1000.pkl", "rb") as f:
+    with open("robotmodel(3).pkl", "rb") as f:
         best_weights_vector = pickle.load(f)
 
     # --- Step 3: Rebuild Model Architecture ---
@@ -186,6 +186,10 @@ def main():
     background = create_background_surface(state.map)
     running = True
     
+    counter = 0
+    inputs = np.asarray(state.getstate()).reshape(1, -1)
+    action_probs = model.predict(inputs, verbose=0)[0]
+
     while running:
         
         # Blit the cached background instead of drawing each cell per frame.
@@ -205,12 +209,17 @@ def main():
 
         pygame.display.flip()
 
-        inputs = np.asarray(state.getstate()).reshape(1, -1)  # Ensure correct shape
-        action_probs = model.predict(inputs, verbose=0)[0]    # Disable TensorFlow logs
+          # Ensure correct shape
+        if counter == 180:
+            inputs = np.asarray(state.getstate()).reshape(1, -1)
+            action_probs = model.predict(inputs, verbose=0)[0]    # Disable TensorFlow logs
+            counter = 0
+        print(counter)
         state.update(action_probs)
   
         # state.update([1.1,1])
         clock.tick(30)  # Cap the frame rate to 60 FPS
+        counter+=1
 
     pygame.quit()
 
