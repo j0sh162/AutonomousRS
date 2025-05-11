@@ -5,6 +5,12 @@ import struct
 from State import State 
 from PIL import Image
 from collections import deque
+import tensorflow.keras
+from keras.models import Sequential
+from keras.layers import Dense
+import pickle
+# from ControlGANN import model_build, model_weights_as_matrix
+
 
 # Constants
 WIDTH, HEIGHT = 1, 1
@@ -24,6 +30,41 @@ FONT = pygame.font.Font("ComicNeueSansID.ttf", 16)
 INTERPOLATION = True
 # Shows the path of the robot 
 TRAIL = True
+
+
+
+# in_dimen = 15 #Total no. of observations made about the environment
+# out_dimen = 2
+def model_build(in_dimen=15,out_dimen=2):
+    model = Sequential()
+    model.add(Dense(12, input_dim=in_dimen, activation='relu'))   
+    model.add(Dense(8, activation='relu'))
+    model.add(Dense(out_dimen, activation='softmax'))
+    #The compilation below is just declared. It is not used anywhere. That's why it does not matter which loss, optimizer or metrics we are using
+    model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+    return model
+
+def model_weights_as_matrix(model, weights_vector):
+    weights_matrix = []
+
+    start = 0
+    for layer_idx, layer in enumerate(model.layers): 
+        layer_weights = layer.get_weights()
+        if layer.trainable:
+            for l_weights in layer_weights:
+                layer_weights_shape = l_weights.shape
+                layer_weights_size = l_weights.size
+        
+                layer_weights_vector = weights_vector[start:start + layer_weights_size]
+                layer_weights_matrix = np.reshape(layer_weights_vector, newshape=(layer_weights_shape))
+                weights_matrix.append(layer_weights_matrix)
+        
+                start = start + layer_weights_size
+        else:
+            for l_weights in layer_weights:
+                weights_matrix.append(l_weights)
+
+    return weights_matrix
 
 def read_bmp_with_pillow(file_path):
     # Open the image file using Pillow
@@ -95,7 +136,7 @@ def draw_robot(screen, robot, trail_counter, trail):
             pygame.draw.line(screen, BLACK,
                             robot_draw_postion,
                             sensor_draw_position, 1)
-            pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
+            pygame.draw.circle(screen, (0,130,100), sensor_draw_position,4)
             screen.blit(FONT.render(str(int(robot.sensors[i].distance)),True,(150,150,150)), robot.sensors[i].text_draw_point)
     pygame.draw.circle(screen, RED, robot_draw_postion, robot.radius)
     
@@ -109,9 +150,24 @@ def draw_robot(screen, robot, trail_counter, trail):
     pygame.draw.line(screen, BLACK,
                             robot_draw_postion,
                             sensor_draw_position, 2)
-    pygame.draw.circle(screen, (0,255,100), sensor_draw_position,4)
+    pygame.draw.circle(screen, (0,130,120), sensor_draw_position,4)
+
+def draw_apples(state, screen):
+    for apple in state.apple_locations:
+        pygame.draw.circle(screen, (0,255,100), apple,4)
 
 def main():
+
+    # --- Step 2: Load the Best GA Individual (Flat Weights Vector) ---
+    with open("robotmodel(3).pkl", "rb") as f:
+        best_weights_vector = pickle.load(f)
+
+    # --- Step 3: Rebuild Model Architecture ---
+    model = model_build()
+
+    # --- Step 4: Set the Best Weights into the Model ---
+    model.set_weights(model_weights_as_matrix(model, best_weights_vector))
+
     trail_counter = 0
     trail = []
     # Use hardware acceleration and double buffering for better performance.
@@ -121,7 +177,7 @@ def main():
     clock = pygame.time.Clock()
 
     # Initialize state and cache the static grid as background.
-    state = State(read_bmp_with_pillow('map2.bmp'))
+    state = State(read_bmp_with_pillow('map2.bmp'), (20,25))
     if INTERPOLATION:
         for sensor in state.robot.sensors:
             senor_endpoints.append(deque(maxlen=5))
@@ -129,11 +185,18 @@ def main():
     print(np.shape(state.map))
     background = create_background_surface(state.map)
     running = True
+    
+    counter = 0
+    inputs = np.asarray(state.getstate()).reshape(1, -1)
+    action_probs = model.predict(inputs, verbose=0)[0]
+
     while running:
         
         # Blit the cached background instead of drawing each cell per frame.
         screen.blit(background, (0, 0))
+        draw_apples(state,screen)
         draw_robot(screen, state.robot, trail_counter,trail)
+
         if TRAIL:
             trail_counter +=1
             if trail_counter == 20:
@@ -145,8 +208,18 @@ def main():
                 running = False
 
         pygame.display.flip()
-        state.update()
-        clock.tick(60)  # Cap the frame rate to 60 FPS
+
+          # Ensure correct shape
+        if counter == 180:
+            inputs = np.asarray(state.getstate()).reshape(1, -1)
+            action_probs = model.predict(inputs, verbose=0)[0]    # Disable TensorFlow logs
+            counter = 0
+        print(counter)
+        state.update(action_probs)
+  
+        # state.update([1.1,1])
+        clock.tick(30)  # Cap the frame rate to 60 FPS
+        counter+=1
 
     pygame.quit()
 

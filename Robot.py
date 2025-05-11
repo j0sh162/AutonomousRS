@@ -3,7 +3,7 @@ import numpy as np
 import jax
 
 CELL_SIZE = 1
-SENSOR_RANGE = 850 # arbitrary
+SENSOR_RANGE = 850 # arbitrary this one is based on map size.
 DELTA_T = .8
 L = 24 # distance bewteen wheels
 
@@ -267,14 +267,26 @@ class Robot:
         return math.sqrt(dx * dx + dy * dy)
 
     #TODO: Change the shit out of this 
-    def update(self):
-        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,1.1,1)
+    def update(self, action):
+        pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,action[0],action[1])
+        
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
+
+        self.collision_check(map,v,pose[2])
+        
         self.collision_check(self.grid,v,pose[2])
         for sensor in self.sensors:
             sensor.update((float(self.position[0]),float(self.position[1])), self.grid)
         return pose
 
+    def get_state(self):
+        mystate = [self.position[0],self.position[1], self.angle]
+        # print(len(self.sensors))
+        for sensor in self.sensors:
+            mystate.append(sensor.get_distance())
+
+        return mystate
+    
         
     def update_occupancy_grid(self, free_grid, occupy_grid):
         mask1 = np.logical_and(0 < free_grid[:, 0], free_grid[:, 0] < self.grid_size[1])
@@ -401,11 +413,14 @@ class Sensor:
         self.intersection_point =[-30,-30]
         return None
     
+    def get_distance(self):
+        return self.distance
+    
     def update(self, starting_point, map):
         self.starting_point = starting_point
         self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
         self.update_intersection_point(map)
-        self.distance = self.calculate_distance(self.starting_point[0],self.starting_point[1],self.intersection_point[0],self.intersection_point[1])
+        self.distance = min(255.0, max(1, self.calculate_distance(self.starting_point[0],self.starting_point[1],self.intersection_point[0],self.intersection_point[1])))/255.0
         points = self.get_points_on_line(self.starting_point,self.robot.angle+self.direction, 51,1)
         self.text_draw_point = [points[0][50],points[1][50]]
         # print(self.text_draw_point)
