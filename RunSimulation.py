@@ -5,9 +5,10 @@ import struct
 from State import State 
 from PIL import Image
 from collections import deque
-import tensorflow.keras
-from keras.models import Sequential
-from keras.layers import Dense
+import tensorflow
+import keras
+from keras import Sequential
+from keras._tf_keras.keras.layers import Dense
 import pickle
 # from ControlGANN import model_build, model_weights_as_matrix
 
@@ -22,12 +23,13 @@ CELL_SIZE = 1
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+GREEN = (0, 255, 0)
 
 pygame.init()
 pygame.font.init() 
 FONT = pygame.font.Font("ComicNeueSansID.ttf", 16)
 # Makes visualisation nicer without affecting underlying logic
-INTERPOLATION = True
+INTERPOLATION = False
 # Shows the path of the robot 
 TRAIL = True
 
@@ -106,6 +108,10 @@ def interpolation(deque):
     output[1] = int(sum(y_values) / len(y_values))
     return output
 
+def draw_estimate(screen, robot, trail_counter, trail):
+
+    pygame.draw.circle(screen,GREEN,robot.estimation.position,robot.radius)
+
 
 def draw_robot(screen, robot, trail_counter, trail):
 
@@ -156,6 +162,21 @@ def draw_apples(state, screen):
     for apple in state.apple_locations:
         pygame.draw.circle(screen, (0,255,100), apple,4)
 
+def create_grayscale_background(grid):
+    """Create a grayscale version of the background.
+    Grid values range from 0 (white) to 1 (black)."""
+    background = pygame.Surface((COLS * CELL_SIZE, ROWS * CELL_SIZE))
+    for y in range(ROWS):
+        for x in range(COLS):
+            # Map the 0-1 value to a 255-0 grayscale value
+            # 0 in grid = 255 grayscale (white)
+            # 1 in grid = 0 grayscale (black)
+            gray_value = int(255 * (1 - grid[y][x]))
+            color = (gray_value, gray_value, gray_value)
+            pygame.draw.rect(background, color, 
+                            (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+    return background
+
 def main():
 
     # --- Step 2: Load the Best GA Individual (Flat Weights Vector) ---
@@ -171,55 +192,80 @@ def main():
     trail_counter = 0
     trail = []
     # Use hardware acceleration and double buffering for better performance.
-    screen = pygame.display.set_mode((COLS * CELL_SIZE, ROWS * CELL_SIZE),
-                                     pygame.HWSURFACE | pygame.DOUBLEBUF)
-    pygame.display.set_caption("Simulation")
+    trail_counter = 0
+    trail = []
+    
+    # Create a single window that's twice as wide to hold both views
+    combined_screen = pygame.display.set_mode(
+        (COLS * CELL_SIZE * 2, ROWS * CELL_SIZE),
+        pygame.HWSURFACE | pygame.DOUBLEBUF
+    )
+    pygame.display.set_caption("Simulation with Binary and Grayscale Views")
+    
+    # Create two surfaces for the different views
+    binary_view = pygame.Surface((COLS * CELL_SIZE, ROWS * CELL_SIZE))
+    grayscale_view = pygame.Surface((COLS * CELL_SIZE, ROWS * CELL_SIZE))
+    
     clock = pygame.time.Clock()
 
-    # Initialize state and cache the static grid as background.
+    # Initialize state
     state = State(read_bmp_with_pillow('map2.bmp'), (20,25))
     if INTERPOLATION:
         for sensor in state.robot.sensors:
             senor_endpoints.append(deque(maxlen=5))
 
     print(np.shape(state.map))
-    background = create_background_surface(state.map)
-    running = True
     
+    # Create both backgrounds
+    binary_background = create_background_surface(state.map)
+
+    
+    running = True
     counter = 0
     inputs = np.asarray(state.getstate()).reshape(1, -1)
-    action_probs = model.predict(inputs, verbose=0)[0]
+    # action_probs = model.predict(inputs, verbose=0)[0]
+    action_probs = [5,5]
 
     while running:
+        grayscale_background = create_grayscale_background(state.robot.estimation.grid)
+        # Draw on both views
+        binary_view.blit(binary_background, (0, 0))
+        grayscale_view.blit(grayscale_background, (0, 0))
         
-        # Blit the cached background instead of drawing each cell per frame.
-        screen.blit(background, (0, 0))
-        draw_apples(state,screen)
-        draw_robot(screen, state.robot, trail_counter,trail)
-
+        draw_apples(state, binary_view)
+        draw_robot(binary_view, state.robot, trail_counter, trail)
+        
+        draw_apples(state, grayscale_view)
+        draw_estimate(grayscale_view, state.robot, trail_counter, trail)
+        
+        # Update TRAIL counter
         if TRAIL:
-            trail_counter +=1
+            trail_counter += 1
             if trail_counter == 20:
                 trail_counter = 0
                 
-        # Process events.
+        # Process events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
+        # Blit both views to the combined screen
+        combined_screen.blit(binary_view, (0, 0))
+        combined_screen.blit(grayscale_view, (COLS * CELL_SIZE, 0))
+        
         pygame.display.flip()
 
-          # Ensure correct shape
+        # Update logic [keep your existing code]
         if counter == 180:
             inputs = np.asarray(state.getstate()).reshape(1, -1)
-            action_probs = model.predict(inputs, verbose=0)[0]    # Disable TensorFlow logs
+            # action_probs = model.predict(inputs, verbose=0)[0]
+            action_probs = [5,5]
             counter = 0
         print(counter)
         state.update(action_probs)
   
-        # state.update([1.1,1])
-        clock.tick(30)  # Cap the frame rate to 60 FPS
-        counter+=1
+        clock.tick(30)
+        counter += 1
 
     pygame.quit()
 

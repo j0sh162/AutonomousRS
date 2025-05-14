@@ -1,6 +1,7 @@
 from Robot import Robot
 import random
 import math
+from fast_slam_robot import Fast_Slam
 class State():
 
     #TODO put points all over the space and check if the robot has touched them if he touched them remove from list them and to reward
@@ -11,7 +12,7 @@ class State():
 
     def __init__(self,map, robot_start_postion):
         self.map = map
-        self.robot = Robot(robot_start_postion,3.141/2)  
+        self.robot = Fast_Slam(robot_start_postion,3.141/2,map,50)  
         self.apple_locations = self.generate_points(30)
         self.reward = 0
 
@@ -36,7 +37,7 @@ class State():
     #TODO make efficient
     
     def update(self, action):
-        self.robot.update(self.map, action)
+        self.robot.update(action)
 
         x, y = self.robot.position
         x_lower = math.floor(x - self.robot.radius)

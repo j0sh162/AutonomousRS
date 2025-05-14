@@ -82,6 +82,12 @@ class Robot:
         self.angle = angle
         self.radius = L/2
         self.sensors = [Sensor(list(position),0,SENSOR_RANGE,self), Sensor(list(position), math.pi,SENSOR_RANGE,self),
+                        Sensor(list(position),0.25,SENSOR_RANGE,self), Sensor(list(position), -0.25,SENSOR_RANGE,self),
+                        Sensor(list(position),0.75,SENSOR_RANGE,self), Sensor(list(position), -0.75,SENSOR_RANGE,self),
+                        Sensor(list(position),1.25,SENSOR_RANGE,self), Sensor(list(position), -1.25,SENSOR_RANGE,self),
+                        Sensor(list(position),1.75,SENSOR_RANGE,self), Sensor(list(position), -1.75,SENSOR_RANGE,self),
+                        Sensor(list(position),2.25,SENSOR_RANGE,self), Sensor(list(position), -2.25,SENSOR_RANGE,self),
+                        Sensor(list(position),2.75,SENSOR_RANGE,self), Sensor(list(position), -2.75,SENSOR_RANGE,self),
                         Sensor(list(position),1,SENSOR_RANGE,self), Sensor(list(position),-1,SENSOR_RANGE,self), 
                         Sensor(list(position),0.5,SENSOR_RANGE,self), Sensor(list(position),-0.5,SENSOR_RANGE,self), 
                         Sensor(list(position),-1.5,SENSOR_RANGE,self), Sensor(list(position),1.5,SENSOR_RANGE,self),
@@ -90,9 +96,9 @@ class Robot:
         self.state_estimate = np.array((3))
         self.grid = grid
         self.grid_size = np.shape(self.grid)
-        self.sensitivity_factor = 0.9
-        self.occupy_prob = 0.9
-        self.free_prob = 0.35
+        self.sensitivity_factor = 1.0
+        self.occupy_prob = 0.8
+        self.free_prob = 0.2
         self.prior_prob= 0.5
 
 
@@ -121,10 +127,52 @@ class Robot:
     
 
     # TODO: Add noise to the respones to make it so that its more inline with real life 
-    def motion_model(self):
-        return self.forward_kinematics(self.position[0],self.position[1],self.angle,1.1,1)
+    def motion_model(self,action):
+        """
+        Probabilistic motion model with noise.
+        Returns a sampled next state based on forward kinematics plus noise.
+        
+        Args:
+            action: [Vl, Vr] - Left and right wheel velocities
+        
+        Returns:
+            np.array: Sampled next state [x, y, theta]
+        """
+        # Get nominal next state from forward kinematics
+        nominal_next_state = self.forward_kinematics(
+            self.position[0], self.position[1], self.angle, action[0], action[1]
+        )
+        
+        # Motion noise parameters (these can be tuned)
+        # Scale with magnitude of motion to make noise proportional to movement
+        motion_magnitude = 0.5 * (abs(action[0]) + abs(action[1]))
+        
+        # Positional noise scales with movement
+        alpha_xy = 0.05  # 10% positional noise
+        sigma_xy = alpha_xy * motion_magnitude + 0.01  # Small base noise
+        
+        # Angular noise scales with rotation
+        alpha_theta = 0.01 # 20% angular noise
+        angular_change = abs(action[1] - action[0])  # Approximation of turning
+        sigma_theta = alpha_theta * angular_change + 0.01  # Small base noise
+        
+        # Sample noise from Gaussian distributions
+        noise_x = np.random.normal(0, sigma_xy)
+        noise_y = np.random.normal(0, sigma_xy)
+        noise_theta = np.random.normal(0, sigma_theta)
+        
+        # Add noise to nominal state
+        noisy_state = nominal_next_state.copy()
+        noisy_state[0] += noise_x
+        noisy_state[1] += noise_y
+        noisy_state[2] += noise_theta
+        
+        # Normalize angle to [-π, π]
+        noisy_state[2] = np.mod(noisy_state[2] + np.pi, 2 * np.pi) - np.pi
+        
+        return noisy_state
     
-    def get_state(self):
+    def get_ordo(self):
         return self.position[0],self.position[1],self.angle
     
         
@@ -138,20 +186,25 @@ class Robot:
         free_points = []
         distances = []
         for i in self.sensors:
-            # i.update_intersection_point(self.grid)
-            i.update(self.position,self.grid)
-             #TODO Make sure this is working right 
-            x_int_candidates = np.round(i.ending_point[0]).astype(int)
-            y_int_candidates = np.round(i.ending_point[1]).astype(int)
-            point = np.array([x_int_candidates,y_int_candidates])
-            occupied_points.append(point)
-            free_points = i.get_points_on_line_int()
-            free_points.extend(free_points) #TODO: Make sure this is updated
-            distances.append(i.distance)
+            i.update(self.position, self.grid)
             
-
+            x_int_candidates = np.round(i.intersection_point[0]).astype(int)
+            y_int_candidates = np.round(i.intersection_point[1]).astype(int)
+            point = np.array([x_int_candidates, y_int_candidates])
+            occupied_points.append(point)
+            
+            # Get free points from this sensor and add them to our collection
+            sensor_free_points = i.get_points_on_line_int()
+            free_points.extend(sensor_free_points)
+            
+            distances.append(i.distance)
         
-        return distances,free_points, occupied_points
+        # Convert to numpy arrays for easier indexing
+        occupied_points = np.array(occupied_points)
+        free_points = np.array(free_points)
+        
+        return distances, free_points, occupied_points
+
     
     # TODO: Add noise to the measurments for more realistic environment
     def measurement_model(self, z_star, z):
@@ -184,7 +237,7 @@ class Robot:
         # Adding 1 ensures that if diff is 0, weight is 1 (or max value).
         # The sensitivity_factor allows tuning how sharply the weight drops.
         weight = 1.0 / (1.0 + self.sensitivity_factor * sum_abs_diff)
-
+        print(weight)
         return weight
 
 
@@ -272,7 +325,7 @@ class Robot:
         
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
 
-        self.collision_check(map,v,pose[2])
+        self.collision_check(self.grid,v,pose[2])
         
         self.collision_check(self.grid,v,pose[2])
         for sensor in self.sensors:
@@ -366,8 +419,8 @@ class Sensor:
         dx = np.cos(self.direction)
         dy = np.sin(self.direction)
         
-        end_x = x0 + self.length * dx
-        end_y = y0 + self.length * dy
+        end_x = self.intersection_point[0]
+        end_y = self.intersection_point[1]
 
         num_points = self.get_num_points_between((x0,y0),(end_x,end_y), resolution)
         x_values = np.linspace(x0, end_x, num_points)

@@ -3,8 +3,26 @@ from Robot import Robot
 import random
 from math import pi as PI
 import copy
-from RunSimulation import read_bmp_with_pillow
-from State import State
+from PIL import Image
+
+def read_bmp_with_pillow(file_path):
+    # Open the image file using Pillow
+    with Image.open(file_path) as img:
+        # Ensure image is in RGB mode
+        img = img.convert("RGB")
+        width, height = img.size
+        pixels = []
+
+        # Load pixel data
+        for y in range(height):
+            row = []
+            for x in range(width):
+                pixel = img.getpixel((x, y))
+                # If the red channel is 255 then consider that free space (0), else an obstacle (1)
+                val = 0 if pixel[0] == 255 else 1
+                row.append(val)
+            pixels.append(row)
+    return pixels
 
 def create_rotation_matrix(theta):
     R = np.array([
@@ -41,20 +59,19 @@ class Fast_Slam(Robot):
     def __init__(self,position,angle,grid,num_particles):
         super().__init__(position,angle,grid)
         self.num_particles = num_particles
-        self.prev_odo = self.curr_odo = self.get_state()
+        self.prev_odo = self.curr_odo = self.get_ordo()
         self.p = [None] * num_particles
         init_grid = self.best_grid = np.full(self.grid_size, 0.5)
 
         y_max, x_max = self.grid_size
         for i in range(num_particles):
-            x = random.uniform(0.0, x_max)
-            y = random.uniform(0.0, y_max)
-            self.p[i] = Robot((x,y),PI/2,init_grid)
-        pass
-
-    def fast_slam(self):
-        self.update()
-        self.curr_odo = self.get_state()
+            
+            self.p[i] = Robot(self.position,PI/2,init_grid)
+        self.estimation = self.p[0]
+        
+    def fast_slam(self,action):
+        
+        self.curr_odo = self.get_ordo()
         z_star, free_grid_star, occupy_grid_star = self.sense()
 
         free_grid_offset_star = absolute2relative(free_grid_star, self.curr_odo)
@@ -62,8 +79,8 @@ class Fast_Slam(Robot):
         w = np.zeros(self.num_particles)
         for i in range(self.num_particles):
             p = self.p
-            prev_pose = p[i].get_state()
-            x, y, theta = p[i].motion_model()
+            prev_pose = p[i].get_ordo()
+            x, y, theta = p[i].motion_model(action)
             p[i].set_states([x, y, theta])
      
     
@@ -73,7 +90,7 @@ class Fast_Slam(Robot):
 
             # Update occupancy grid based on the true measurements
             
-            curr_pose = p[i].get_state()
+            curr_pose = p[i].get_ordo()
             free_grid = relative2absolute(free_grid_offset_star, curr_pose).astype(np.int32)
             occupy_grid = relative2absolute(occupy_grid_offset_star, curr_pose).astype(np.int32)
             p[i].update_occupancy_grid(free_grid, occupy_grid)
@@ -83,11 +100,8 @@ class Fast_Slam(Robot):
         best_id = np.argsort(w)[-1]
 
         # select best particle
-        estimated_R = copy.deepcopy(p[best_id])
-        print('Real')
-        print(self.get_state())
-        print('Estimate')
-        print(estimated_R.get_state())
+        self.estimation = copy.deepcopy(p[best_id])
+   
 
         # Resample the particles with a sample probability proportional to the importance weight
         # Use low variance sampling method
@@ -106,13 +120,9 @@ class Fast_Slam(Robot):
 
         self.p = new_p
         self.prev_odo = self.curr_odo
-        return estimated_R
+        
 
-if __name__ == '__main__':
-    world_grid = State(read_bmp_with_pillow('map2.bmp')).map
-    robot = Fast_Slam((15,20),PI/2,world_grid,100)
-
-    for i in range(100):
-        estimate = robot.fast_slam()
-        print(estimate.position)
-        print(robot.position)
+    def update(self, action):
+        out = super().update(action)
+        self.fast_slam(action)
+        return out

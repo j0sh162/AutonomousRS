@@ -15,6 +15,9 @@ import random
 from math import pi as PI
 
 
+def normalDistribution(mean, variance):
+    return np.exp(-(np.power(mean, 2) / variance / 2.0) / np.sqrt(2.0 * np.pi * variance))
+
 def create_rotation_matrix(theta):
     R = np.array([
         [np.cos(theta), -np.sin(theta)],
