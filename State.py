@@ -12,8 +12,8 @@ class State():
 
     def __init__(self,map, robot_start_postion):
         self.map = map
-        self.robot = Fast_Slam(robot_start_postion,3.141/2,map,50)  
-        self.apple_locations = self.generate_points(30)
+        self.robot = Fast_Slam(robot_start_postion,3.141/2,map,10)  
+        self.apple_locations = self.generate_points(0)
         self.reward = 0
 
     def getstate(self):

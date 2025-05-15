@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import jax
-
+import copy
 CELL_SIZE = 1
 SENSOR_RANGE = 850 # arbitrary this one is based on map size.
 DELTA_T = .8
@@ -139,38 +139,27 @@ class Robot:
             np.array: Sampled next state [x, y, theta]
         """
         # Get nominal next state from forward kinematics
-        nominal_next_state = self.forward_kinematics(
-            self.position[0], self.position[1], self.angle, action[0], action[1]
-        )
-        
-        # Motion noise parameters (these can be tuned)
-        # Scale with magnitude of motion to make noise proportional to movement
-        motion_magnitude = 0.5 * (abs(action[0]) + abs(action[1]))
-        
-        # Positional noise scales with movement
-        alpha_xy = 0.05  # 10% positional noise
-        sigma_xy = alpha_xy * motion_magnitude + 0.01  # Small base noise
-        
-        # Angular noise scales with rotation
-        alpha_theta = 0.01 # 20% angular noise
-        angular_change = abs(action[1] - action[0])  # Approximation of turning
-        sigma_theta = alpha_theta * angular_change + 0.01  # Small base noise
+        # nominal_next_state = self.forward_kinematics(self.position[0],self.position[0],self.angle,action[0],action[1])
+        nominal_next_state = self.update(action)
         
         # Sample noise from Gaussian distributions
-        noise_x = np.random.normal(0, sigma_xy)
-        noise_y = np.random.normal(0, sigma_xy)
-        noise_theta = np.random.normal(0, sigma_theta)
+        noise_x = np.random.normal(0, 0.01)
+        noise_y = np.random.normal(0, 0.01)
+        noise_theta = np.random.normal(0, 0.01)
         
         # Add noise to nominal state
-        noisy_state = nominal_next_state.copy()
-        noisy_state[0] += noise_x
-        noisy_state[1] += noise_y
-        noisy_state[2] += noise_theta
+        noisy_state = nominal_next_state
+        self.position[0] += noise_x
+        self.position[1] += noise_y
+        self.angle += noise_theta
         
         # Normalize angle to [-π, π]
         noisy_state[2] = np.mod(noisy_state[2] + np.pi, 2 * np.pi) - np.pi
-        
-        return noisy_state
+        print(nominal_next_state)
+        print(noisy_state)
+        # self.position = noisy_state[0:2]
+        # self.angle = noisy_state[2]
+        return nominal_next_state
     
     def get_ordo(self):
         return self.position[0],self.position[1],self.angle
@@ -184,9 +173,10 @@ class Robot:
     def sense(self):
         occupied_points = []
         free_points = []
+        all_free_points = []
         distances = []
         for i in self.sensors:
-            i.update(self.position, self.grid)
+            # i.update(self.position, self.grid)
             
             x_int_candidates = np.round(i.intersection_point[0]).astype(int)
             y_int_candidates = np.round(i.intersection_point[1]).astype(int)
@@ -195,13 +185,25 @@ class Robot:
             
             # Get free points from this sensor and add them to our collection
             sensor_free_points = i.get_points_on_line_int()
-            free_points.extend(sensor_free_points)
+          
+            all_free_points.extend(sensor_free_points)
+
             
             distances.append(i.distance)
         
         # Convert to numpy arrays for easier indexing
         occupied_points = np.array(occupied_points)
         free_points = np.array(free_points)
+        all_free_points = np.array(all_free_points)
+
+    # Convert occupied_points to a set for efficient lookups
+        occupied_points_set = {tuple(p) for p in occupied_points}
+
+        # Filter out free points that are in the occupied set
+        # We convert free points to tuples for set comparison
+        free_points = np.array([
+            p for p in all_free_points if tuple(p) not in occupied_points_set
+        ])
         
         return distances, free_points, occupied_points
 
@@ -236,8 +238,8 @@ class Robot:
         # Calculate weight: inverse of (1 + scaled difference)
         # Adding 1 ensures that if diff is 0, weight is 1 (or max value).
         # The sensitivity_factor allows tuning how sharply the weight drops.
-        weight = 1.0 / (1.0 + self.sensitivity_factor * sum_abs_diff)
-        print(weight)
+        weight = 1.0 / (1.0 + sum_abs_diff)
+        # print(weight)
         return weight
 
 
@@ -248,6 +250,8 @@ class Robot:
         x_upper = math.ceil(x + self.radius)
         y_upper = math.ceil(y + self.radius)
 
+        
+
         # i = x_lower
         colliding_x = 0
         colliding_y = 0
@@ -255,6 +259,8 @@ class Robot:
         for i in range(x_lower,x_upper):
             j = y_lower
             for j in range(y_lower,y_upper):
+                if(j >= 599 or j <= 0 or i >= 599 or i <=0):
+                    pass
                 if(map[j][i] == 1):
                     dx = x - i
                     dy = y - j
@@ -321,15 +327,28 @@ class Robot:
 
     #TODO: Change the shit out of this 
     def update(self, action):
+        for sensor in self.sensors:
+            sensor.update((float(self.position[0]),float(self.position[1])), self.grid)
         pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,action[0],action[1])
         
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
+        arr = copy.deepcopy(np.array(self.grid))
 
-        self.collision_check(self.grid,v,pose[2])
+        mask_le_0_5 = arr <= 0.5
+
+# Create a boolean mask where values are greater than 0.5
+        mask_gt_0_5 = arr > 0.5
+
+        # Assign 0 to elements where the value is less than or equal to 0.5
+        arr[mask_le_0_5] = 0
+
+        # Assign 1 to elements where the value is greater than 0.5
+        arr[mask_gt_0_5] = 1
+
+        self.collision_check(arr,v,pose[2])
         
-        self.collision_check(self.grid,v,pose[2])
-        for sensor in self.sensors:
-            sensor.update((float(self.position[0]),float(self.position[1])), self.grid)
+        self.collision_check(arr,v,pose[2])
+     
         return pose
 
     def get_state(self):
@@ -463,7 +482,7 @@ class Sensor:
             if int(map[y][x]) == 1:
                 self.intersection_point = [x,y]
                 return (x, y)
-        self.intersection_point =[-30,-30]
+        # self.intersection_point =[-30,-30]
         return None
     
     def get_distance(self):

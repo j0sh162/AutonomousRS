@@ -56,6 +56,8 @@ def relative2absolute(position, states):
 
 
 class Fast_Slam(Robot):
+
+    # Here we init our robot with the current pose the world grid as well as the number of particles
     def __init__(self,position,angle,grid,num_particles):
         super().__init__(position,angle,grid)
         self.num_particles = num_particles
@@ -64,35 +66,37 @@ class Fast_Slam(Robot):
         init_grid = self.best_grid = np.full(self.grid_size, 0.5)
 
         y_max, x_max = self.grid_size
+        # We then intialise our particles with the init pose but a empty occupancy grid
         for i in range(num_particles):
-            
-            self.p[i] = Robot(self.position,PI/2,init_grid)
+            self.p[i] = Robot(self.position,PI/2,copy.deepcopy(init_grid))
         self.estimation = self.p[0]
         
     def fast_slam(self,action):
-        
+        # robot senses environment
         self.curr_odo = self.get_ordo()
-        z_star, free_grid_star, occupy_grid_star = self.sense()
-
+        distances, free_grid_star, occupy_grid_star = self.sense()
+        # convert it to relative frame
         free_grid_offset_star = absolute2relative(free_grid_star, self.curr_odo)
         occupy_grid_offset_star = absolute2relative(occupy_grid_star, self.curr_odo)
         w = np.zeros(self.num_particles)
         for i in range(self.num_particles):
             p = self.p
             prev_pose = p[i].get_ordo()
-            x, y, theta = p[i].motion_model(action)
-            p[i].set_states([x, y, theta])
-     
+            # update each particles postion
+            p[i].motion_model(action)
+            # p[i].set_states([x, y, theta])
+            # esitmate the particles measurments based on the occupancy grid
+            distances_part, _, _ = p[i].sense()
     
             # Calculate particle's weights depending on robot's measurement. ie lowest difference in measurment is best particle 
-            z, _, _ = p[i].sense()
-            w[i] = self.measurement_model(z_star, z)
+            w[i] = self.measurement_model(distances, distances_part)
 
             # Update occupancy grid based on the true measurements
             
             curr_pose = p[i].get_ordo()
             free_grid = relative2absolute(free_grid_offset_star, curr_pose).astype(np.int32)
             occupy_grid = relative2absolute(occupy_grid_offset_star, curr_pose).astype(np.int32)
+            # Update the particles occupancy grid
             p[i].update_occupancy_grid(free_grid, occupy_grid)
 
         # normalize

@@ -11,8 +11,8 @@ from keras import Sequential
 from keras._tf_keras.keras.layers import Dense
 import pickle
 # from ControlGANN import model_build, model_weights_as_matrix
-
-
+import copy
+actions = [[5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 2.5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [2.5, 5], [2.5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [2.5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [2.5, 5], [2.5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5], [5, 5]]
 # Constants
 WIDTH, HEIGHT = 1, 1
 ROWS, COLS = 600, 600
@@ -109,7 +109,10 @@ def interpolation(deque):
     return output
 
 def draw_estimate(screen, robot, trail_counter, trail):
-
+    if TRAIL and trail_counter == 0:
+        trail.append((robot.estimation.position[0],robot.estimation.position[1]))
+    for postion in trail:
+        pygame.draw.circle(screen, (0,0,0), postion, 2)
     pygame.draw.circle(screen,GREEN,robot.estimation.position,robot.radius)
 
 
@@ -166,6 +169,18 @@ def create_grayscale_background(grid):
     """Create a grayscale version of the background.
     Grid values range from 0 (white) to 1 (black)."""
     background = pygame.Surface((COLS * CELL_SIZE, ROWS * CELL_SIZE))
+    arr = copy.deepcopy(grid)
+
+    mask_le_0_5 = arr <= 0.5
+
+# Create a boolean mask where values are greater than 0.5
+    mask_gt_0_5 = arr > 0.5
+
+    # Assign 0 to elements where the value is less than or equal to 0.5
+    arr[mask_le_0_5] = 0
+
+    # Assign 1 to elements where the value is greater than 0.5
+    arr[mask_gt_0_5] = 1
     for y in range(ROWS):
         for x in range(COLS):
             # Map the 0-1 value to a 255-0 grayscale value
@@ -194,6 +209,7 @@ def main():
     # Use hardware acceleration and double buffering for better performance.
     trail_counter = 0
     trail = []
+    estimate_trail = []
     
     # Create a single window that's twice as wide to hold both views
     combined_screen = pygame.display.set_mode(
@@ -209,24 +225,24 @@ def main():
     clock = pygame.time.Clock()
 
     # Initialize state
-    state = State(read_bmp_with_pillow('map2.bmp'), (20,25))
+    state = State(read_bmp_with_pillow('SimpleMap.bmp'), (100,100))
     if INTERPOLATION:
         for sensor in state.robot.sensors:
             senor_endpoints.append(deque(maxlen=5))
 
     print(np.shape(state.map))
-    
+    # 
     # Create both backgrounds
     binary_background = create_background_surface(state.map)
 
-    
     running = True
     counter = 0
     inputs = np.asarray(state.getstate()).reshape(1, -1)
     # action_probs = model.predict(inputs, verbose=0)[0]
-    action_probs = [5,5]
+
 
     while running:
+        
         grayscale_background = create_grayscale_background(state.robot.estimation.grid)
         # Draw on both views
         binary_view.blit(binary_background, (0, 0))
@@ -236,12 +252,12 @@ def main():
         draw_robot(binary_view, state.robot, trail_counter, trail)
         
         draw_apples(state, grayscale_view)
-        draw_estimate(grayscale_view, state.robot, trail_counter, trail)
+        draw_estimate(grayscale_view, state.robot, trail_counter, estimate_trail)
         
         # Update TRAIL counter
         if TRAIL:
             trail_counter += 1
-            if trail_counter == 20:
+            if trail_counter == 1:
                 trail_counter = 0
                 
         # Process events
@@ -262,10 +278,10 @@ def main():
             action_probs = [5,5]
             counter = 0
         print(counter)
-        state.update(action_probs)
-  
+        state.update(actions[counter])
         clock.tick(30)
         counter += 1
+        
 
     pygame.quit()
 
