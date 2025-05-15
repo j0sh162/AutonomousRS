@@ -10,7 +10,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 import pickle
 # from ControlGANN import model_build, model_weights_as_matrix
-
+import tensorflow as tf
 
 # Constants
 WIDTH, HEIGHT = 1, 1
@@ -39,7 +39,7 @@ def model_build(in_dimen=15,out_dimen=2):
     model = Sequential()
     model.add(Dense(12, input_dim=in_dimen, activation='relu'))   
     model.add(Dense(8, activation='relu'))
-    model.add(Dense(out_dimen, activation='softmax'))
+    model.add(Dense(out_dimen, activation='tanh'))
     #The compilation below is just declared. It is not used anywhere. That's why it does not matter which loss, optimizer or metrics we are using
     model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
     return model
@@ -158,8 +158,12 @@ def draw_apples(state, screen):
 
 def main():
 
+    @tf.function
+    def fast_predict(model1, x):
+        return model1(x, training=False)
+
     # --- Step 2: Load the Best GA Individual (Flat Weights Vector) ---
-    with open("robotmodel(3).pkl", "rb") as f:
+    with open("Agent2.pkl", "rb") as f:
         best_weights_vector = pickle.load(f)
 
     # --- Step 3: Rebuild Model Architecture ---
@@ -177,50 +181,58 @@ def main():
     clock = pygame.time.Clock()
 
     # Initialize state and cache the static grid as background.
-    state = State(read_bmp_with_pillow('map2.bmp'), (20,25))
+    state = State(read_bmp_with_pillow('map2.bmp'))
+
     if INTERPOLATION:
         for sensor in state.robot.sensors:
             senor_endpoints.append(deque(maxlen=5))
 
-    print(np.shape(state.map))
+    # print(np.shape(state.map))
     background = create_background_surface(state.map)
-    running = True
-    
-    counter = 0
-    inputs = np.asarray(state.getstate()).reshape(1, -1)
-    action_probs = model.predict(inputs, verbose=0)[0]
+    state.reset()
+    step = 0
 
-    while running:
-        
+    while step<=30:
+
+        state_tensor = tf.convert_to_tensor(np.asarray(state.getstate()).reshape(1, -1), dtype=tf.float32)
+        output = fast_predict(model,state_tensor)[0].numpy() * 2
+
+        # print("inputs:", state.getstate())
+
+
+        print("Action based on inputs:", output)
+
+        for i in range(0,30):
+            state.update(list(output))
         # Blit the cached background instead of drawing each cell per frame.
-        screen.blit(background, (0, 0))
-        draw_apples(state,screen)
-        draw_robot(screen, state.robot, trail_counter,trail)
+            screen.blit(background, (0, 0))
+            draw_apples(state,screen)
+            draw_robot(screen, state.robot, trail_counter,trail)
 
-        if TRAIL:
-            trail_counter +=1
-            if trail_counter == 20:
-                trail_counter = 0
-                
-        # Process events.
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+            if TRAIL:
+                trail_counter +=1
+                if trail_counter == 20:
+                    trail_counter = 0
+                    
+            # Process events.
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    i = 31
+                    step = 31
 
-        pygame.display.flip()
+            pygame.display.flip()
 
-          # Ensure correct shape
-        if counter == 180:
-            inputs = np.asarray(state.getstate()).reshape(1, -1)
-            action_probs = model.predict(inputs, verbose=0)[0]    # Disable TensorFlow logs
-            counter = 0
-        print(counter)
-        state.update(action_probs)
-  
-        # state.update([1.1,1])
-        clock.tick(30)  # Cap the frame rate to 60 FPS
-        counter+=1
-
+            # Ensure correct shape
+            
+            # Disable TensorFlow logs
+            
+            # print(counter)
+            
+            
+            # state.update([1.1,1])
+            clock.tick(60)  # Cap the frame rate to 60 FPS
+        step += 1
+    print("reward:", state.reward)
     pygame.quit()
 
 if __name__ == "__main__":

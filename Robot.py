@@ -7,7 +7,7 @@ DELTA_T = .8
 L = 24 # distance bewteen wheels
 
 class Robot:
-    
+
     position = (-30,-30)
     angle = 0
     sensors = []
@@ -17,21 +17,21 @@ class Robot:
         self.angle = angle
         self.radius = L/2
         self.sensors = [Sensor(list(position),0,SENSOR_RANGE,self), Sensor(list(position), math.pi,SENSOR_RANGE,self),
-                        Sensor(list(position),1,SENSOR_RANGE,self), Sensor(list(position),-1,SENSOR_RANGE,self), 
-                        Sensor(list(position),0.5,SENSOR_RANGE,self), Sensor(list(position),-0.5,SENSOR_RANGE,self), 
+                        Sensor(list(position),1,SENSOR_RANGE,self), Sensor(list(position),-1,SENSOR_RANGE,self),
+                        Sensor(list(position),0.5,SENSOR_RANGE,self), Sensor(list(position),-0.5,SENSOR_RANGE,self),
                         Sensor(list(position),-1.5,SENSOR_RANGE,self), Sensor(list(position),1.5,SENSOR_RANGE,self),
-                        Sensor(list(position),2,SENSOR_RANGE,self), Sensor(list(position),-2,SENSOR_RANGE,self), 
+                        Sensor(list(position),2,SENSOR_RANGE,self), Sensor(list(position),-2,SENSOR_RANGE,self),
                         Sensor(list(position),-2.5,SENSOR_RANGE,self), Sensor(list(position),2.5,SENSOR_RANGE,self)]
 
     def forward_kinematics(self, x, y, angle, Vl, Vr):
-    
+
         if abs(Vr - Vl) <= 1e-6:
             new_x = x + Vl * math.cos(angle) * DELTA_T
             new_y = y + Vl * math.sin(angle) * DELTA_T
             new_angle = angle  # No rotation
             return np.array([new_x, new_y, new_angle])
         else:
-            R = (0.5*L)*((Vl+Vr)/(Vr-Vl)) 
+            R = (0.5*L)*((Vl+Vr)/(Vr-Vl))
 
         w = (Vr-Vl)/(L)
 
@@ -40,14 +40,14 @@ class Robot:
         rotation = np.array([[math.cos(w*DELTA_T), -math.sin(w*DELTA_T), 0],
                              [math.sin(w*DELTA_T),  math.cos(w*DELTA_T), 0],
                              [0                  ,  0                  , 1]])
-        
+
         second_part = np.array([x-icc[0],y-icc[1],angle])
 
         third_part = np.array([icc[0],icc[1],w*DELTA_T])
-       
+
 
         return np.dot(rotation,second_part) + third_part
-    
+
     def collision_check(self,map,v,angle):
         x,y = self.position
         x_lower = math.floor(x - self.radius)
@@ -66,8 +66,8 @@ class Robot:
                     dx = x - i
                     dy = y - j
                     for m in [[0,0],[0,CELL_SIZE],[CELL_SIZE,0],[CELL_SIZE,CELL_SIZE]]:
-                        dm_x = dx + m[0] 
-                        dm_y = dy + m[1] 
+                        dm_x = dx + m[0]
+                        dm_y = dy + m[1]
                         distance = math.sqrt(dm_x * dm_x + dm_y * dm_y)
                         colliding = distance < self.radius
                         if(colliding):
@@ -92,7 +92,7 @@ class Robot:
             right_x = colliding_x + 0.5*CELL_SIZE
             top_y = colliding_y - 0.5*CELL_SIZE
             bottom_y = colliding_y + 0.5*CELL_SIZE
-            
+
             left_dist = self.distance(x,y,left_x,colliding_y)
             right_dist = self.distance(x,y,right_x,colliding_y)
             top_dist = self.distance(x,y,colliding_x,top_y)
@@ -103,16 +103,16 @@ class Robot:
             n = None
             if(min_dist == left_dist):
                 n = [-CELL_SIZE,0]
-                
+
             elif(min_dist == right_dist):
                 n = [CELL_SIZE,0]
-                
+
             elif(min_dist == top_dist):
                 n = [0,-CELL_SIZE]
-                
+
             else:
                 n = [0,CELL_SIZE]
-            
+
             n = np.array(n)
             v_perp = (np.dot(np.array(v).T,n)*n)
             v_par = v - v_perp
@@ -128,11 +128,11 @@ class Robot:
 
     def update(self,map, action):
         pose = self.forward_kinematics(self.position[0],self.position[1],self.angle,action[0],action[1])
-        
+
         v = [pose[0]-float(self.position[0]),float(pose[1]- self.position[1])]
 
         self.collision_check(map,v,pose[2])
-        
+
         for sensor in self.sensors:
             sensor.update((float(self.position[0]),float(self.position[1])), map)
         return pose
@@ -144,7 +144,7 @@ class Robot:
             mystate.append(sensor.get_distance())
 
         return mystate
-    
+
 class Sensor:
 
     distance = 1
@@ -161,7 +161,7 @@ class Sensor:
         self.direction = direction
         self.robot = robot
         self.starting_point = starting_point
-    
+
     def calculate_distance(self,x1,y1,x2,y2):
         dx = x1 - x2
         dy = y1 - y2
@@ -176,14 +176,14 @@ class Sensor:
         end_x = x0 + length * dx
         end_y = y0 + length * dy
 
-        return [float(end_x), float(end_y)] 
-       
+        return [float(end_x), float(end_y)]
+
     def get_points_on_line(self, start_point, angle_radians, length, resolution=1):
         x0, y0 = start_point
-        
+
         dx = np.cos(angle_radians)
         dy = np.sin(angle_radians)
-        
+
         end_x = x0 + length * dx
         end_y = y0 + length * dy
 
@@ -194,14 +194,14 @@ class Sensor:
         return [x_values, y_values]
 
     def get_num_points_between(self, point1, point2, step_size=1):
- 
+
         x1, y1 = point1
         x2, y2 = point2
         distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
         num_points = int(distance / step_size) + 1
-        
+
         return num_points
-    
+
     def update_intersection_point(self, map):
         points = self.get_points_on_line(self.starting_point,self.robot.angle+self.direction, self.length)
         for i in range(len(points[0])):
@@ -212,10 +212,10 @@ class Sensor:
                 return (x, y)
         self.intersection_point =[-30,-30]
         return None
-    
+
     def get_distance(self):
         return self.distance
-    
+
     def update(self, starting_point, map):
         self.starting_point = starting_point
         self.ending_point = self.get_endpoint(starting_point,self.robot.angle+self.direction, self.length)
